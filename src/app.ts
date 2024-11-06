@@ -9,6 +9,7 @@ import statusRoutes from "./routes/statusRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import containersRoutes from "./routes/containerRoutes";
 import issueRoutes from "./routes/issueRouter";
+import path from "path";
 const app = express();
 
 // Use morgan for logging
@@ -28,6 +29,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/status", statusRoutes);
 app.use("/api/containers", containersRoutes);
 app.use("/api/issues", issueRoutes);
+
+app.use(express.static(path.join(__dirname, "public")));
+
+app.all("*", (req, res) => {
+	res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // Error handling middleware
 app.use(errorHandler);
