@@ -9,7 +9,7 @@
 		"test": "jest",
 		"dev": "nodemon --exec ts-node src/app.ts",
 		"postinstall": "prisma generate",
-		"build": "prisma generate &&  <actual-build-command> && tsc",
+		"build": "prisma generate  && tsc",
 		"start": "node dist/app.js"
 	},
 	"keywords": [],
