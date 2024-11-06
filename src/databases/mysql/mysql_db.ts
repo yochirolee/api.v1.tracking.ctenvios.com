@@ -27,7 +27,7 @@ export const mysql_db = {
 		},
 		getParcelsByContainerId: async (containerId: number, verbose = false) => {
 			const queryStr = verbose
-				? "select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName from parcels where containerId = ?"
+				? "select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight  from parcels where containerId = ?"
 				: "SELECT hbl,invoiceId,containerId,parcelType as type, agencyId,currentLocation from parcels where containerId = ?";
 			const result = await mysql_client(queryStr, [containerId]);
 
@@ -41,7 +41,7 @@ export const mysql_db = {
 			const offset = (page - 1) * limit;
 
 			const queryStr = `
-	    select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight
+	    select hbl,invoiceId,agency,agencyId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight
 		FROM parcels 
 		ORDER BY invoiceDate DESC 
 		LIMIT ? OFFSET ?
@@ -70,41 +70,41 @@ export const mysql_db = {
 				page = Math.max(1, page);
 				limit = Math.max(1, limit);
 				const offset = (page - 1) * limit;
-				let queryStr: string;
-				let queryParams: any[] = [];
-
 				const trimmedSearchTerm = searchTerm ? searchTerm.trim() : "";
 
-				// Existing switch cases can be converted to else-if statements
+				// Base query structure
+				const baseQuery = `
+					select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
+						   sender,receiver,city,province,description,containerName,weight 
+					FROM \`parcels\` WHERE`;
+
+				let whereClause: string;
+				let queryParams: any[] = [];
+
+				// Determine the WHERE clause based on search term
 				if (trimmedSearchTerm.length === 10 && !isNaN(Number(trimmedSearchTerm))) {
-					queryStr =
-						"select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM `parcels` WHERE senderMobile = ? ORDER BY InvoiceId DESC LIMIT ? OFFSET ?";
-					queryParams = [trimmedSearchTerm, limit, offset];
+					whereClause = "senderMobile = ?";
+					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.length === 8 && !isNaN(Number(trimmedSearchTerm))) {
-					queryStr =
-						"select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM `parcels` WHERE receiverMobile = ? ORDER BY InvoiceId DESC LIMIT ? OFFSET ?";
-					queryParams = [trimmedSearchTerm, limit, offset];
+					whereClause = "receiverMobile = ?";
+					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.length === 11 && !isNaN(Number(trimmedSearchTerm))) {
-					queryStr =
-						"select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM `parcels` WHERE receiverCi = ? ORDER BY InvoiceId DESC LIMIT ? OFFSET ?";
-					queryParams = [trimmedSearchTerm, limit, offset];
+					whereClause = "receiverCi = ?";
+					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.startsWith("CTE")) {
-					queryStr =
-						"select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM `parcels` WHERE hbl = ? ORDER BY InvoiceId DESC LIMIT ? OFFSET ?";
-					queryParams = [trimmedSearchTerm, limit, offset];
+					whereClause = "hbl = ?";
+					queryParams = [trimmedSearchTerm];
 				} else if (!isNaN(Number(trimmedSearchTerm))) {
-					queryStr =
-						"select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM `parcels` WHERE InvoiceId = ? ORDER BY InvoiceId DESC LIMIT ? OFFSET ?";
-					queryParams = [trimmedSearchTerm, limit, offset];
+					whereClause = "InvoiceId = ?";
+					queryParams = [trimmedSearchTerm];
 				} else {
 					const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
-					queryStr = `
-						select hbl,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight FROM \`parcels\`
-						WHERE sender LIKE ? OR receiver LIKE ? OR description LIKE ?
-						ORDER BY InvoiceId DESC LIMIT ? OFFSET ?
-				`;
-					queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard, limit, offset];
+					whereClause = "sender LIKE ? OR receiver LIKE ? OR description LIKE ?";
+					queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard];
 				}
+
+				const queryStr = `${baseQuery} ${whereClause} ORDER BY InvoiceId DESC LIMIT ? OFFSET ?`;
+				queryParams.push(limit, offset);
 
 				const [packagesFound, [{ total }]] = await Promise.all([
 					mysql_client(queryStr, queryParams),
@@ -135,7 +135,8 @@ export const mysql_db = {
 
 			const placeholders = hblArray.map(() => "?").join(",");
 			const query = verbose
-				? `SELECT hbl,invoiceId,parcelType as type,currentLocation,containerName,agency,sender,receiver,city,invoiceDate, province,description, weight FROM parcels WHERE hbl IN (${placeholders})`
+				? `select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
+						   sender,receiver,city,province,description,containerName,weight  FROM parcels WHERE hbl IN (${placeholders})`
 				: `SELECT hbl FROM parcels WHERE hbl IN (${placeholders})`;
 
 			const result = await mysql_client(query, hblArray);

@@ -64,6 +64,7 @@ export const prisma_db = {
 				},
 
 				orderBy: [{ updatedAt: "desc" }, { locationId: "desc" }],
+				distinct: ["hbl"],
 			});
 
 			return event;

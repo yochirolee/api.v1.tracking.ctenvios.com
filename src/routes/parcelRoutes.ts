@@ -11,6 +11,6 @@ router.get("/search", search);
 router.get("/hbl/:hbl", getByHbl);
 //router.post("/import", upload.single("file"), importFromExcel);
 router.post("/import-events", upload.single("file"), importEventsFromExcel);
-router.get("/", getAll);
+router.get("/", cache("1 minutes"), getAll);
 
 export default router;

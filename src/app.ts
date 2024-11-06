@@ -10,6 +10,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import containersRoutes from "./routes/containerRoutes";
 import issueRoutes from "./routes/issueRouter";
 import path from "path";
+
 const app = express();
 
 // Use morgan for logging
