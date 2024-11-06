@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model Event {
+  id           Int          @id @default(autoincrement())
+  hbl          String
+  locationId   Int
+  location     Location     @relation(fields: [locationId], references: [id])
+  status       ParcelStatus @default(FACTURADO)
+  issues       Issue[]
+  description  String
+  updatedAt    DateTime     @db.Timestamptz()
+  updateMethod UpdateMethod @default(SYSTEM)
+  type         EventType    @default(UPDATE)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  notification Notification?
+
+  @@unique([hbl, locationId, status])
+  @@index([hbl, updatedAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  hbl String
+  eventId   Int      @unique
+  event     Event    @relation(fields: [eventId], references: [id])
+ 
+  sentAt    DateTime @default(now()) @db.Timestamptz()
+  status    NotificationStatus @default(SENT)
+
+  @@unique([hbl, eventId])
+  @@index([hbl, status])
+}
+
+model Issue {
+  id          Int         @id @default(autoincrement())
+  hbl         String
+  eventId     Int
+  event       Event       @relation(fields: [eventId], references: [id])
+  description String
+  status      IssueStatus @default(OPEN)
+  createdAt   DateTime    @default(now()) @db.Timestamptz()
+  resolvedAt  DateTime?   @db.Timestamptz()
+  comments    Comment[]
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  photoUrl    String?
+
+  @@index([hbl, status])
+}
+
+model Comment {
+  id        Int   @id @default(autoincrement())
+  issueId   Int
+  issue     Issue    @relation(fields: [issueId], references: [id])
+  content   String
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  photoUrl  String?
+
+  @@index([issueId])
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String?
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now()) @db.Timestamptz()
+  updatedAt DateTime  @updatedAt @db.Timestamptz()
+  agencyId  Int
+  events    Event[]
+  issues    Issue[]
+  comments  Comment[]
+
+  @@index([email])
+}
+
+model Location {
+  id          Int      @id
+  name        String   @unique
+  description String?
+  events      Event[]
+ 
+}
+
+
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  MANAGER
+  DRIVER
+  WAREHOUSE
+  USER
+}
+
+enum ParcelStatus {
+  FACTURADO
+  EN_PALLET
+  EN_DESPACHO
+  EN_CONTENEDOR
+  EN_ESPERA_DE_AFORO
+  AFORADO
+  EN_TRASLADO
+  ENTREGADO
+  NO_DECLARADO
+  ROTO
+  MOJADO
+  DERRAME
+  CON_FALTANTE
+  PERDIDO
+  ENTREGA_FALLIDA
+  RETRASADO
+  OTRO
+}
+
+enum IssueStatus {
+  OPEN
+  RESOLVED
+ 
+}
+
+enum UpdateMethod {
+  SCANNED
+  MANUAL
+  SYSTEM
+  EXCEL_FILE
+}
+
+enum NotificationStatus {
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum EventType {
+  ISSUE
+  UPDATE
+}
