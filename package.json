@@ -1,13 +1,15 @@
 {
 	"name": "ctenvios-backend",
 	"version": "1.0.0",
-	"main": "index.js",
+	"main": "src/app.ts",
 	"prisma": {
 		"seed": "ts-node prisma/seed.ts"
 	},
 	"scripts": {
 		"test": "jest",
-		"dev": "nodemon --exec ts-node src/app.ts"
+		"dev": "nodemon --exec ts-node src/app.ts",
+		"build": "tsc",
+		"start": "node dist/app.js"
 	},
 	"keywords": [],
 	"author": "Yochiro Lee Cruz",
