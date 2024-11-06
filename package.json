@@ -7,7 +7,7 @@
 	},
 	"scripts": {
 		"dev": "nodemon --exec ts-node src/app.ts",
-		"build": "prisma generate && tsc",
+		"build": "prisma generate && tsc --output public",
 		"postinstall": "prisma generate",
 		"start": "node dist/app.js"
 	},
