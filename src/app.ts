@@ -31,10 +31,8 @@ app.use("/api/status", statusRoutes);
 app.use("/api/containers", containersRoutes);
 app.use("/api/issues", issueRoutes);
 
-app.use(express.static(path.join(__dirname, "public")));
-
 app.all("*", (req, res) => {
-	res.sendFile(path.join(__dirname, "public", "index.html"));
+	res.send("Hello World");
 });
 
 // Error handling middleware
