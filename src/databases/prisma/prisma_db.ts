@@ -1,4 +1,12 @@
-import { Issue, PrismaClient, Prisma, ParcelStatus, EventType, IssueStatus } from "@prisma/client";
+import {
+	Issue,
+	PrismaClient,
+	Prisma,
+	ParcelStatus,
+	EventType,
+	IssueStatus,
+	User,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -100,15 +108,26 @@ export const prisma_db = {
 			return issue;
 		},
 	},
-	/* containers: {
-		getByContainerId: async (containerId: number) => {
-			const containers = await prisma.parcel.findMany({
-				where: { containerId: containerId },
-				include: {
-					currentLocation: true,
-				},
-			});
-			return containers;
+	users: {
+		getAll: async () => {
+			const users = await prisma.user.findMany();
+			return users;
 		},
-	}, */
+		getById: async (id: string) => {
+			const user = await prisma.user.findUnique({ where: { id } });
+			return user;
+		},
+		getByEmail: async (email: string) => {
+			const user = await prisma.user.findUnique({ where: { email } });
+			return user;
+		},
+		create: async (user: User) => {
+			const newUser = await prisma.user.create({ data: user });
+			return newUser;
+		},
+		update: async (id: string, user: User) => {
+			const updatedUser = await prisma.user.update({ where: { id }, data: user });
+			return updatedUser;
+		},
+	},
 };

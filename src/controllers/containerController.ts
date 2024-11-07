@@ -35,38 +35,69 @@ const getParcelsByContainerId = async (req: Request, res: Response, next: NextFu
 		res.status(500).json({ message: (error as Error).message });
 	}
 };
-const toPort = async (req: Request, res: Response, next: NextFunction) => {
-	const { containerId, updatedAt, userId } = req.body;
-	if (!containerId || !updatedAt) {
-		return res.status(400).json({ message: "Container ID and updatedAt are required" });
-	}
-	const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
-	const createdEvents = createEvents(
-		mysql_parcels,
-		userId,
-		updatedAt,
-		ParcelStatus.EN_CONTENEDOR,
-		4,
-	);
-	const events = await supabase_db.events.upsert(createdEvents);
-	res.json(events);
+
+type ContainerEventConfig = {
+	[key: string]: {
+		status: ParcelStatus;
+		locationId: number;
+		description: string;
+	};
 };
 
-const toWarehouse = async (req: Request, res: Response, next: NextFunction) => {
-	const { containerId, updatedAt, userId } = req.body;
-	if (!containerId || !updatedAt) {
-		return res.status(400).json({ message: "Container ID and updatedAt are required" });
+const CONTAINER_EVENTS: ContainerEventConfig = {
+	TO_PORT: {
+		status: ParcelStatus.EN_CONTENEDOR,
+		locationId: 4,
+		description: "Su paquete ha arribado al puerto del Mariel",
+	},
+
+	TO_WAREHOUSE: {
+		status: ParcelStatus.EN_ESPERA_DE_AFORO,
+		locationId: 5,
+		description: "Su paquete ha sido trasladado a la bodega",
+	},
+	AFORADO: {
+		status: ParcelStatus.AFORADO,
+		locationId: 5,
+		description: "Su paquete ha sido trasladado a la bodega",
+	},
+};
+
+const updateContainerStatus = async (req: Request, res: Response, next: NextFunction) => {
+	const { containerId, updatedAt, userId, eventType } = req.body;
+
+	if (!containerId || !updatedAt || !eventType) {
+		return res.status(400).json({
+			message: "Container ID, updatedAt and eventType are required",
+		});
 	}
-	const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
-	const createdEvents = createEvents(
-		mysql_parcels,
-		userId,
-		updatedAt,
-		ParcelStatus.EN_ESPERA_DE_AFORO,
-		5,
-	);
-	const events = await supabase_db.events.upsert(createdEvents);
-	res.json(events);
+
+	if (!CONTAINER_EVENTS[eventType]) {
+		return res.status(400).json({
+			message: "Invalid event type",
+		});
+	}
+
+	try {
+		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
+		const { status, locationId, description } = CONTAINER_EVENTS[eventType];
+
+		const createdEvents = createEvents(
+			mysql_parcels,
+			userId,
+			updatedAt,
+			status,
+			locationId,
+			UpdateMethod.SYSTEM,
+			EventType.UPDATE,
+			description,
+		);
+
+		const events = await supabase_db.events.upsert(createdEvents as any); // Type assertion needed due to Event type mismatch
+		res.json(events);
+	} catch (error) {
+		res.status(500).json({ message: (error as Error).message });
+	}
 };
 
 const createEvents = (
@@ -77,24 +108,23 @@ const createEvents = (
 	locationId: number,
 	updateMethod: UpdateMethod = UpdateMethod.SYSTEM,
 	type: EventType = EventType.UPDATE,
-) => {
-	const createdEvents: any[] = mysql_parcels.map((parcel) => ({
+	description: string,
+): Omit<Event, "id">[] => {
+	return mysql_parcels.map((parcel) => ({
 		hbl: parcel.hbl,
-		status: status,
-		locationId: locationId,
-		userId,
-		type: type,
-		updateMethod: updateMethod,
-		description: "Su paquete a arribado al puerto del Mariel",
+		status,
+		locationId,
+		userId: userId.toString(),
+		type,
+		updateMethod,
+		description,
 		updatedAt: createUTCDate(new Date(updatedAt)),
 	}));
-	return createdEvents;
 };
 
 export const containerController = {
 	getAll,
 	getById,
 	getParcelsByContainerId,
-	toPort,
-	toWarehouse,
+	updateContainerStatus,
 };

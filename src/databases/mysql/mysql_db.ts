@@ -35,7 +35,7 @@ export const mysql_db = {
 		},
 	},
 	parcels: {
-		getAll: async (page = 1, limit = 25) => {
+		getAll: async (page = 1, limit = 15) => {
 			page = Math.max(1, page);
 			limit = Math.max(1, limit);
 			const offset = (page - 1) * limit;

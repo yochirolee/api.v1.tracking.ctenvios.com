@@ -10,7 +10,7 @@ import { createExcelEvents } from "../lib/_excel_helpers";
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const page = parseInt(req.query.page as string) || 1;
-		const limit = parseInt(req.query.limit as string) || 50;
+		const limit = parseInt(req.query.limit as string) || 15;
 
 		const result = await mysql_db.parcels.getAll(page, limit);
 		const latest_events = await prisma_db.events.getLatestEvents(
