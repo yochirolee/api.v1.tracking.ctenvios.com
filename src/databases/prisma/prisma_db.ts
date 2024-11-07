@@ -1,17 +1,9 @@
-import {
-	Issue,
-	PrismaClient,
-	Prisma,
-	ParcelStatus,
-	EventType,
-	IssueStatus,
-	User,
-} from "@prisma/client";
+import { Issue, PrismaClient, Prisma, Status, EventType, IssueStatus, User } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 export const prisma_db = {
-	/* 	parcels: {
+	/*	parcels: {
 		getAll: async () => {
 			try {
 				const parcels = await prisma.parcel.findMany();
@@ -69,6 +61,7 @@ export const prisma_db = {
 				where: { hbl: { in: hbl_array } },
 				include: {
 					location: true,
+					status: true,
 				},
 
 				orderBy: [{ updatedAt: "desc" }, { locationId: "desc" }],
@@ -82,11 +75,14 @@ export const prisma_db = {
 				where: { hbl: { in: hbl_array } },
 				include: {
 					location: true,
+					status: true,
 				},
 			});
 			const eventsWithLocationName = events.map((event) => ({
 				...event,
 				locationName: event.location.name,
+				status: event.status.status,
+				statusName: event.status.name,
 			}));
 			return eventsWithLocationName;
 		},

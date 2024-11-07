@@ -1,26 +1,22 @@
-import { Event, EventType, ParcelStatus, UpdateMethod } from "@prisma/client";
+import { Event, EventType, UpdateMethod } from "@prisma/client";
 
 interface EventConfig {
 	locationId: number;
-	status: ParcelStatus;
-	description: string;
+	statusId: number;
 }
 
 const EVENT_MAPPINGS: Record<string, EventConfig> = {
 	fecha_aforo: {
 		locationId: 5,
-		status: ParcelStatus.AFORADO,
-		description: "Su paquete ha sido aforado",
+		statusId: 6,
 	},
 	fecha_traslado: {
 		locationId: 6,
-		status: ParcelStatus.EN_TRASLADO,
-		description: "Su paquete esta en traslado a destino final",
+		statusId: 7,
 	},
 	fecha_entregado: {
 		locationId: 7,
-		status: ParcelStatus.ENTREGADO,
-		description: "Su paquete ha sido entregado",
+		statusId: 8,
 	},
 };
 
@@ -42,9 +38,8 @@ export const createExcelEvents = (
 			([key, config]): Omit<Event, "id"> => ({
 				hbl: valid_hbl.hbl,
 				locationId: config.locationId,
-				status: config.status,
+				statusId: config.statusId,
 				updatedAt: createUTCDate(row[key]),
-				description: config.description,
 				updateMethod: UpdateMethod.EXCEL_FILE,
 				userId,
 				type: EventType.UPDATE,

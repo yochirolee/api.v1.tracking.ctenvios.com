@@ -137,7 +137,7 @@ export const mysql_db = {
 			const query = verbose
 				? `select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
 						   sender,receiver,city,province,description,containerName,weight  FROM parcels WHERE hbl IN (${placeholders})`
-				: `SELECT hbl FROM parcels WHERE hbl IN (${placeholders})`;
+				: `SELECT hbl,containerId,invoiceId,agencyId FROM parcels WHERE hbl IN (${placeholders})`;
 
 			const result = await mysql_client(query, hblArray);
 			return result;

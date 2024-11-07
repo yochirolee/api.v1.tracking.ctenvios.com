@@ -66,10 +66,11 @@ export const getByHbl = async (req: Request, res: Response, next: NextFunction) 
 
 export const importEventsFromExcel = async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		if (!req.file || !req.body.userId)
-			return res.status(400).json({ message: "No file uploaded or Not userId" });
+		const user = req.user;
+
+		if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 		const file = req.file;
-		const userId = req.body.userId;
+		const userId = user.userId;
 
 		const sheetNames = await readSheetNames(file.buffer);
 
@@ -94,7 +95,17 @@ export const importEventsFromExcel = async (req: Request, res: Response, next: N
 				const uniqueHbls = [...new Set(rows.map((row) => row.hbl))] as string[];
 				const existing_hbl = await mysql_db.parcels.getInHblArray(uniqueHbls, false);
 				const events = rows.flatMap((row) => createExcelEvents(row, existing_hbl, userId));
-				const eventsUpserted = await supabase_db.events.upsert(events).then((res) => res.length);
+				const [_, eventsUpserted] = await Promise.all([
+					supabase_db.parcels.upsert(
+						existing_hbl.map((el) => ({
+							hbl: el.hbl,
+							containerId: el.containerId,
+							invoiceId: el.invoiceId,
+							agencyId: el.agencyId,
+						})),
+					),
+					supabase_db.events.upsert(events).then((res) => res.length),
+				]);
 
 				return {
 					sheetName,

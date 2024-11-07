@@ -7,26 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Parcel {
- 
-  hbl String @unique
-  containerId Int?
-  invoiceId Int
-  agencyId Int ?
-  events Event[]
-  issues Issue[]
 
-}
 
 model Event {
   id           Int          @id @default(autoincrement())
   hbl          String
-  parcel       Parcel       @relation(fields: [hbl], references: [hbl], onDelete: Cascade, onUpdate: Cascade)
   locationId   Int
   location     Location     @relation(fields: [locationId], references: [id])
-  statusId     Int
-  status       Status       @relation(fields: [statusId], references: [id])
+  status       ParcelStatus @default(FACTURADO)
   issues       Issue[]
+  description  String
   updatedAt    DateTime     @db.Timestamptz()
   updateMethod UpdateMethod @default(SYSTEM)
   type         EventType    @default(UPDATE)
@@ -34,15 +24,8 @@ model Event {
   user         User         @relation(fields: [userId], references: [id])
   notification Notification?
 
-  @@unique([hbl, locationId,statusId])
+  @@unique([hbl, locationId, status])
   @@index([hbl, updatedAt])
-}
-
-model Status {
-  id Int @id @default(autoincrement())
-  status String @unique
-  name String @unique
-  events Event[]
 }
 
 model Notification {
@@ -61,7 +44,6 @@ model Notification {
 model Issue {
   id          Int         @id @default(autoincrement())
   hbl         String
-  parcel      Parcel      @relation(fields: [hbl], references: [hbl], onDelete: Cascade, onUpdate: Cascade)
   eventId     Int
   event       Event       @relation(fields: [eventId], references: [id])
   description String
@@ -69,7 +51,6 @@ model Issue {
   createdAt   DateTime    @default(now()) @db.Timestamptz()
   resolvedAt  DateTime?   @db.Timestamptz()
   comments    Comment[]
-  isResolved Boolean @default(false)
   userId      String
   user        User        @relation(fields: [userId], references: [id])
   photoUrl    String?
@@ -95,15 +76,13 @@ model User {
   email     String    @unique
   password  String
   name      String?
-  role      Role      @relation(fields: [roleId], references: [id])
-  roleId    Int
+  role      Role      @default(USER)
   createdAt DateTime  @default(now()) @db.Timestamptz()
   updatedAt DateTime  @updatedAt @db.Timestamptz()
   agencyId  Int
   events    Event[]
   issues    Issue[]
   comments  Comment[]
-  refreshToken String?
 
   @@index([email])
 }
@@ -118,15 +97,26 @@ model Location {
 
 
 
-model Role {
-  id Int @id @default(autoincrement())
-  role String @unique
-  name String @unique
-  users User[]
-
+enum Role {
+  SUPERADMIN
+  ADMIN
+  MANAGER
+  DRIVER
+  WAREHOUSE
+  USER
 }
 
+enum ParcelStatus {
+  FACTURADO
+  EN_PALLET
+  EN_DESPACHO
+  EN_CONTENEDOR
+  EN_ESPERA_DE_AFORO
+  AFORADO
+  EN_TRASLADO
+  ENTREGADO
 
+}
 
 enum IssueStatus {
   OPEN

@@ -5,16 +5,17 @@ import morgan from "morgan";
 import parcelRoutes from "./routes/parcelRoutes";
 
 import userRoutes from "./routes/userRoutes";
-import statusRoutes from "./routes/statusRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import containersRoutes from "./routes/containerRoutes";
 import issueRoutes from "./routes/issueRouter";
 import path from "path";
 
+
 const app = express();
 
 // Use morgan for logging
 app.use(morgan("dev"));
+
 
 // Enable compression
 app.use(compression());
@@ -27,7 +28,6 @@ app.use(express.json());
 // You can also set different cache durations for different routes
 app.use("/api/parcels", parcelRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/status", statusRoutes);
 app.use("/api/containers", containersRoutes);
 app.use("/api/issues", issueRoutes);
 

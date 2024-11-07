@@ -11,10 +11,10 @@ const prisma = new PrismaClient();
 
 // User registration
 router.post("/register", async (req, res) => {
-	const { name, email, password, agencyId, role } = req.body;
-	console.log(name, email, password, agencyId, role);
+	const { name, email, password, agencyId, roleId } = req.body;
+	console.log(name, email, password, agencyId, roleId);
 	// Validate required fields
-	if (!name || !email || !password || !agencyId || !role) {
+	if (!name || !email || !password || !agencyId || !roleId) {
 		return res.status(400).json({ error: "All fields are required" });
 	}
 
@@ -41,7 +41,7 @@ router.post("/register", async (req, res) => {
 			return res.status(400).json({ error: "User already exists" });
 		}
 		const user = await prisma.user.create({
-			data: { name, email, password: hashedPassword, agencyId, role },
+			data: { name, email, password: hashedPassword, agencyId, roleId },
 		});
 		res.json({ message: "User registered successfully", userId: user.id });
 	} catch (error) {
@@ -51,17 +51,22 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
 	try {
-		console.log(req);
 		const result = schemas.loginSchema.safeParse(req.body);
 		if (!result.success) {
 			return res.status(400).json({ error: result.error.errors });
 		}
 		const { email, password } = result.data;
 
-		const user = await prisma.user.findUnique({ where: { email } });
+		const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
 		if (user && (await bcrypt.compare(password, user.password))) {
 			const token = jwt.sign(
-				{ userId: user.id, email: user.email, role: user.role, agencyId: user.agencyId },
+				{
+					userId: user.id,
+					email: user.email,
+					role: user.role.role,
+					roleId: user.roleId,
+					agencyId: user.agencyId,
+				},
 				process.env.JWT_SECRET as string,
 				{ expiresIn: "4h" },
 			);
@@ -80,7 +85,10 @@ router.post("/login", async (req, res) => {
 
 // Get all users (admin only)
 router.get("/", authMiddleware, async (req, res) => {
-	if (req.user?.role !== Role.ADMIN && req.user?.role !== Role.SUPERADMIN) {
+	const user = req.user;
+	console.log(user, "user");
+
+	if (user?.role !== "SUPERADMIN" && user?.role !== "ADMIN") {
 		return res.status(403).json({ error: "Unauthorized access" });
 	}
 	const users = await prisma.user.findMany({
@@ -92,14 +100,17 @@ router.get("/", authMiddleware, async (req, res) => {
 			agencyId: true,
 		},
 	});
+
 	res.json(users);
 });
 
 // Get user by ID
 router.get("/:id", authMiddleware, async (req, res) => {
 	const { id } = req.params;
+	//get token
+	const token = req.headers.authorization?.split(" ")[1];
 
-	if (req.user?.id !== id && req.user?.role !== Role.ADMIN && req.user?.role !== Role.SUPERADMIN) {
+	if (req.user?.id !== id && req.user?.role !== "SUPERADMIN" && req.user?.role !== "ADMIN") {
 		return res.status(403).json({ error: "Unauthorized access" });
 	}
 
@@ -129,7 +140,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 	const { id } = req.params;
 	const { name, email, role } = req.body;
 
-	if (req.user?.id !== id && req.user?.role !== Role.ADMIN && req.user?.role !== Role.SUPERADMIN) {
+	if (req.user?.id !== id && req.user?.roleId !== 1 && req.user?.roleId !== 2) {
 		return res.status(403).json({ error: "Unauthorized access" });
 	}
 
@@ -148,7 +159,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 router.delete("/:id", authMiddleware, async (req, res) => {
 	const { id } = req.params;
 
-	if (req.user?.role !== Role.ADMIN && req.user?.role !== Role.SUPERADMIN) {
+	if (req.user?.roleId !== 1 && req.user?.roleId !== 2) {
 		return res.status(403).json({ error: "Unauthorized access" });
 	}
 
@@ -159,5 +170,7 @@ router.delete("/:id", authMiddleware, async (req, res) => {
 		res.status(400).json({ error: "Delete failed" });
 	}
 });
+
+
 
 export default router;

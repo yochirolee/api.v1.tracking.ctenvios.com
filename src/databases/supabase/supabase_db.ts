@@ -1,15 +1,12 @@
-import { UpdateMethod } from "@prisma/client";
+import { Parcel, UpdateMethod } from "@prisma/client";
 import supabase from "./supabase_client";
 
 export const supabase_db = {
-	/* parcels: {
+	parcels: {
 		upsert: async (parcels: Parcel[]): Promise<Parcel[]> => {
-			const { data, error } = await supabase
-				.from<Parcel>("Parcel")
-				.upsert(parcels, {
-					onConflict: "hbl",
-				})
-				.select("*");
+			const { data, error } = await supabase.from<Parcel>("Parcel").upsert(parcels, {
+				onConflict: "hbl",
+			});
 
 			if (error) {
 				console.error("Supabase error:", error);
@@ -30,12 +27,12 @@ export const supabase_db = {
 			}
 			return data || [];
 		},
-	}, */
+	},
 	events: {
 		upsert: async (events: Omit<Event, "id">[]): Promise<Event[]> => {
 			const { data, error } = await supabase
 				.from<Event>("Event")
-				.upsert(events, { onConflict: "hbl,locationId,status" })
+				.upsert(events, { onConflict: "hbl,locationId,statusId" })
 				.select("*");
 
 			if (error) {

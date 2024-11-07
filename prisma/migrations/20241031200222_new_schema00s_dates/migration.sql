@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "Event" ALTER COLUMN "timestamp" SET DATA TYPE TIMESTAMPTZ;
-
--- AlterTable
-ALTER TABLE "Parcel" ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ;
