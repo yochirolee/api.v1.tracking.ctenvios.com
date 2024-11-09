@@ -33,10 +33,9 @@ export const formatResult = (packages: any[], events: any[]) => {
 			province,
 			weight,
 			updatedAt: eventData?.updatedAt,
-			status: eventData?.status?.status,
-			statusName: eventData?.status?.name,
+			status: eventData?.status?.status || eventData?.status,
 			statusDetails: eventData?.statusDetails,
-			locationName: eventData?.location?.name || eventData?.locationName,
+			location: eventData?.location?.name || eventData?.location,
 		};
 	});
 };
@@ -55,41 +54,47 @@ const getMySqlParcelLastEvent = (mysqlParcel: any) => {
 		invoiceDate,
 	} = mysqlParcel;
 
-	switch (true) {
-		case !!containerDate:
-			return {
-				locationId: 3,
-				updatedAt: containerDate,
-				locationName: "En Contenedor",
-				status: "En Contenedor",
-				statusDetails: containerName,
-			};
-		case !!palletDate:
-			return {
-				locationId: 2,
-				updatedAt: palletDate,
-				locationName: "Almacen Central",
-				status: "En Pallet",
-				statusDetails: palletId,
-			};
-		case !!dispatchDate:
-			return {
-				locationId: 2,
-				updatedAt: dispatchDate,
-				locationName: "Almacen Central",
-				status: "En Despacho",
-				statusDetails: `${dispatchId} ${dispatchStatus === 2 ? "Recibido" : "Generado"}`,
-			};
-		case !!invoiceDate:
-			return {
-				locationId: 1,
-				updatedAt: invoiceDate,
-				locationName: "En Agencia",
-				status: "Facturado",
-			};
-		default:
-			return null;
+	// Check conditions in order of priority
+	if (containerDate) {
+		return {
+			locationId: 3,
+			updatedAt: containerDate,
+			location: "Contenedor",
+			status: "EN_CONTENEDOR",
+			statusDetails: containerName,
+		};
 	}
+
+	if (palletDate) {
+		return {
+			locationId: 2,
+			updatedAt: palletDate,
+			location: "Almacen",
+			status: "EN_PALLET",
+			statusDetails: palletId,
+		};
+	}
+
+	if (dispatchDate) {
+		return {
+			locationId: 2,
+			updatedAt: dispatchDate,
+			location: "Almacen",
+			status: "EN_DESPACHO",
+			statusDetails: `${dispatchId} ${dispatchStatus === 2 ? "Recibido" : "Generado"}`,
+		};
+	}
+
+	if (invoiceDate) {
+		return {
+			locationId: 1,
+			updatedAt: invoiceDate,
+			location: "Agencia",
+			status: "FACTURADO",
+		};
+	}
+
+	return null; // Add explicit return for when no conditions match
 };
 
 export const formatResultwithEvents = (mysqlParcel: any[], events: any) => {
@@ -162,16 +167,16 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	createdEvents.push({
 		locationId: 1,
 		updatedAt: invoiceDate,
-		locationName: "En Agencia",
-		status: "Facturado",
+		location: "En Agencia",
+		status: "FACTURADO",
 	});
 
 	if (dispatchDate) {
 		createdEvents.push({
 			locationId: 2,
 			updatedAt: dispatchDate,
-			locationName: "Almacen Central",
-			status: "En Despacho",
+			location: "Almacen Central",
+			status: "EN_DESPACHO",
 			statusDetails: `${dispatchId} ${dispatchStatus === 2 ? "Recibido" : "Generado"}`,
 		});
 	}
@@ -180,8 +185,8 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 		createdEvents.push({
 			locationId: 2,
 			updatedAt: palletDate,
-			locationName: "Almacen Central",
-			status: "En Pallet",
+			location: "Almacen Central",
+			status: "EN_PALLET",
 			statusDetails: palletId,
 		});
 	}
@@ -190,8 +195,8 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 		createdEvents.push({
 			locationId: 3,
 			updatedAt: containerDate,
-			locationName: "En Contenedor",
-			status: "En Contenedor",
+			location: "En Contenedor",
+			status: "EN_CONTENEDOR",
 			statusDetails: containerName,
 		});
 	}

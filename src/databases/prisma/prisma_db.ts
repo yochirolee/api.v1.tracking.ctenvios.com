@@ -1,4 +1,4 @@
-import { Issue, PrismaClient, Prisma, Status, EventType, IssueStatus, User } from "@prisma/client";
+import { PrismaClient, IssueStatus, User } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -82,7 +82,6 @@ export const prisma_db = {
 				...event,
 				locationName: event.location.name,
 				status: event.status.status,
-				statusName: event.status.name,
 			}));
 			return eventsWithLocationName;
 		},

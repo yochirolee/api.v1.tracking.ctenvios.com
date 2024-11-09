@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { schemas } from "../shemas/shemas";
+import { supabase_db } from "../databases/supabase/supabase_db";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -156,21 +157,52 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // Delete user (admin only)
-router.delete("/:id", authMiddleware, async (req, res) => {
-	const { id } = req.params;
-
-	if (req.user?.roleId !== 1 && req.user?.roleId !== 2) {
-		return res.status(403).json({ error: "Unauthorized access" });
-	}
-
+router.delete("/:id", authMiddleware, async (req, res, next) => {
 	try {
-		await prisma.user.delete({ where: { id } });
-		res.json({ message: "User deleted successfully" });
+		const { id } = req.params;
+
+		if (req.user?.roleId !== 1 && req.user?.roleId !== 2) {
+			return res.status(403).json({ error: "Unauthorized access" });
+		}
+
+		try {
+			await prisma.user.delete({ where: { id } });
+			res.json({ message: "User deleted successfully" });
+		} catch (error) {
+			res.status(400).json({ error: "Delete failed" });
+		}
 	} catch (error) {
-		res.status(400).json({ error: "Delete failed" });
+		next(error);
 	}
 });
 
+///SUPABASE
+router.post("/supabase/signup", async (req, res, next) => {
+	try {
+		const { email, password } = req.body;
+		const { user, session } = await supabase_db.users.signUp(email, password);
+		res.json({ user, session });
+	} catch (error) {
+		next(error);
+	}
+});
 
+router.post("/supabase/signin", async (req, res, next) => {
+	try {
+		const { email, password } = req.body;
+		const { user, session } = await supabase_db.users.signIn(email, password);
+		res.json({ user, session });
+	} catch (error) {
+		next(error);
+	}
+});
+router.get("/supabase/users", async (req, res, next) => {
+	try {
+		const users = await supabase_db.users.getUsers();
+		res.json(users);
+	} catch (error) {
+		next(error);
+	}
+});
 
 export default router;

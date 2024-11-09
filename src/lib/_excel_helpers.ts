@@ -46,3 +46,28 @@ export const createExcelEvents = (
 			}),
 		);
 };
+
+const eventMap = {
+	fecha_aforo: { locationId: 5, statusId: 6 },
+	fecha_traslado: { locationId: 6, statusId: 7 },
+	fecha_entregado: { locationId: 7, statusId: 8 },
+};
+
+export const createEventFromExcelDataRow = (
+	excelEvents: [],
+	hbl_list: Array<{ hbl: string }>,
+	userId: string,
+) => {
+	return Object.entries(excelEvents)
+		.filter(([key]) => key in eventMap)
+		.map(([key, value]) => {
+			const valid_hbl = hbl_list.find((item) => item.hbl === value);
+			if (!valid_hbl) return [];
+			return {
+				hbl: valid_hbl.hbl,
+				updatedAt: value,
+				userId,
+				...eventMap[key as keyof typeof eventMap],
+			};
+		});
+};

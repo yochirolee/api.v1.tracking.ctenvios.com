@@ -34,14 +34,13 @@ model Event {
   user         User         @relation(fields: [userId], references: [id])
   notification Notification?
 
-  @@unique([hbl, locationId,statusId])
-  @@index([hbl, updatedAt])
+  @@unique([hbl,statusId,locationId])
+  
 }
 
 model Status {
   id Int @id @default(autoincrement())
   status String @unique
-  name String @unique
   events Event[]
 }
 

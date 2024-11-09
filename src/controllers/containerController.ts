@@ -23,7 +23,12 @@ const getParcelsByContainerId = async (req: Request, res: Response, next: NextFu
 		const containerId = parseInt(req.params.id);
 		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
 		const latestEvents = await prisma_db.events.getLatestEvents(
-			mysql_parcels.map((parcel) => parcel.hbl),
+			mysql_parcels.map((parcel): string => {
+				if (!parcel?.hbl) {
+					throw new Error("Parcel HBL is required but missing");
+				}
+				return parcel.hbl;
+			}),
 		);
 
 		const formattedParcels = formatResult(mysql_parcels, latestEvents);
@@ -32,6 +37,7 @@ const getParcelsByContainerId = async (req: Request, res: Response, next: NextFu
 			data: formattedParcels,
 		});
 	} catch (error) {
+		next(error);
 		res.status(500).json({ message: (error as Error).message });
 	}
 };
@@ -56,32 +62,32 @@ const CONTAINER_EVENTS: ContainerEventConfig = {
 	//almacen  aforado
 	CONTAINER_WAREHOUSE: {
 		statusId: 6,
-		locationId: 6,
+		locationId: 5,
 	},
 };
 
 const updateContainerStatus = async (req: Request, res: Response, next: NextFunction) => {
-	const { containerId, updatedAt, userId, eventType } = req.body;
-	console.log(req.body, containerId, updatedAt, userId, eventType);
-	//valid types: CONTAINER_TO_PORT, CONTAINER_TO_CUSTOMS, CONTAINER_WAREHOUSE
-	if (!Object.keys(CONTAINER_EVENTS).includes(eventType)) {
-		return res.status(400).json({
-			message: "Invalid event type for container update",
-		});
-	}
-	if (!containerId || !updatedAt || !eventType) {
-		return res.status(400).json({
-			message: "Container ID, updatedAt and eventType are required",
-		});
-	}
-
-	if (!CONTAINER_EVENTS[eventType]) {
-		return res.status(400).json({
-			message: "Invalid event type",
-		});
-	}
-
 	try {
+		const { containerId, updatedAt, userId, eventType } = req.body;
+		console.log(req.body, containerId, updatedAt, userId, eventType);
+		//valid types: CONTAINER_TO_PORT, CONTAINER_TO_CUSTOMS, CONTAINER_WAREHOUSE
+		if (!Object.keys(CONTAINER_EVENTS).includes(eventType)) {
+			return res.status(400).json({
+				message: "Invalid event type for container update",
+			});
+		}
+		if (!containerId || !updatedAt || !eventType) {
+			return res.status(400).json({
+				message: "Container ID, updatedAt and eventType are required",
+			});
+		}
+
+		if (!CONTAINER_EVENTS[eventType]) {
+			return res.status(400).json({
+				message: "Invalid event type",
+			});
+		}
+
 		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
 		const { statusId, locationId } = CONTAINER_EVENTS[eventType];
 
@@ -105,8 +111,12 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			),
 			supabase_db.events.upsert(createdEvents),
 		]); // Type assertion needed due to Event type mismatch
-		res.json(eventsUpserted);
+
+		res.json({
+			message: "Container status updated",
+		});
 	} catch (error) {
+		next(error);
 		res.status(500).json({ message: (error as Error).message });
 	}
 };

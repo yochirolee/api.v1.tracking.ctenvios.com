@@ -95,17 +95,15 @@ export const importEventsFromExcel = async (req: Request, res: Response, next: N
 				const uniqueHbls = [...new Set(rows.map((row) => row.hbl))] as string[];
 				const existing_hbl = await mysql_db.parcels.getInHblArray(uniqueHbls, false);
 				const events = rows.flatMap((row) => createExcelEvents(row, existing_hbl, userId));
-				const [_, eventsUpserted] = await Promise.all([
-					supabase_db.parcels.upsert(
-						existing_hbl.map((el) => ({
-							hbl: el.hbl,
-							containerId: el.containerId,
-							invoiceId: el.invoiceId,
-							agencyId: el.agencyId,
-						})),
-					),
-					supabase_db.events.upsert(events).then((res) => res.length),
-				]);
+				await supabase_db.parcels.upsert(
+					existing_hbl.map((el) => ({
+						hbl: el.hbl,
+						containerId: el.containerId,
+						invoiceId: el.invoiceId,
+						agencyId: el.agencyId,
+					})),
+				);
+				const eventsUpserted = await supabase_db.events.upsert(events).then((res) => res.length);
 
 				return {
 					sheetName,
@@ -122,6 +120,7 @@ export const importEventsFromExcel = async (req: Request, res: Response, next: N
 		res.json({
 			total: totalEvents,
 			sheetStats,
+
 			errors: allErrors.length > 0 ? allErrors : undefined,
 		});
 	} catch (error) {
