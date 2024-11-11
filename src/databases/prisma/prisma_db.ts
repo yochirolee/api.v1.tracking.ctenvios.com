@@ -80,8 +80,9 @@ export const prisma_db = {
 			});
 			const eventsWithLocationName = events.map((event) => ({
 				...event,
-				locationName: event.location.name,
+				location: event.location.name,
 				status: event.status.status,
+				currentLocation: event.location,
 			}));
 			return eventsWithLocationName;
 		},

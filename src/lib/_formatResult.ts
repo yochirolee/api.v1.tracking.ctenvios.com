@@ -1,4 +1,7 @@
+import { Event, EventType } from "@prisma/client";
+import { UpdateMethod } from "@prisma/client";
 import { toCamelCase } from "./_toCamelCase";
+import { createUTCDate } from "./_excel_helpers";
 
 export const formatResult = (packages: any[], events: any[]) => {
 	const eventMap = new Map(events.map((event) => [event.hbl, event]));
@@ -167,7 +170,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	createdEvents.push({
 		locationId: 1,
 		updatedAt: invoiceDate,
-		location: "En Agencia",
+		location: "Agencia",
 		status: "FACTURADO",
 	});
 
@@ -195,7 +198,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 		createdEvents.push({
 			locationId: 3,
 			updatedAt: containerDate,
-			location: "En Contenedor",
+			location: "Contenedor",
 			status: "EN_CONTENEDOR",
 			statusDetails: containerName,
 		});
@@ -206,4 +209,23 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	}
 
 	return createdEvents;
+};
+export const createEvents = (
+	mysql_parcels: any[],
+	userId: string,
+	updatedAt: string,
+	statusId: number,
+	locationId: number,
+	updateMethod: UpdateMethod = UpdateMethod.SYSTEM,
+	type: EventType = EventType.UPDATE,
+): any[] => {
+	return mysql_parcels.map((parcel) => ({
+		hbl: parcel.hbl,
+		statusId,
+		locationId,
+		userId: userId.toString(),
+		type,
+		updateMethod,
+		updatedAt: createUTCDate(new Date(updatedAt)),
+	}));
 };

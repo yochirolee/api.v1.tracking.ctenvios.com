@@ -1,6 +1,6 @@
 import { mysql_db } from "../databases/mysql/mysql_db";
 import { Request, Response, NextFunction } from "express";
-import { formatResult } from "../lib/_formatResult";
+import { createEvents, formatResult } from "../lib/_formatResult";
 import { prisma_db } from "../databases/prisma/prisma_db";
 import { EventType, Status, Event, UpdateMethod } from "@prisma/client";
 import { supabase_db } from "../databases/supabase/supabase_db";
@@ -69,7 +69,6 @@ const CONTAINER_EVENTS: ContainerEventConfig = {
 const updateContainerStatus = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const { containerId, updatedAt, userId, eventType } = req.body;
-		console.log(req.body, containerId, updatedAt, userId, eventType);
 		//valid types: CONTAINER_TO_PORT, CONTAINER_TO_CUSTOMS, CONTAINER_WAREHOUSE
 		if (!Object.keys(CONTAINER_EVENTS).includes(eventType)) {
 			return res.status(400).json({
@@ -89,6 +88,7 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 		}
 
 		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
+
 		const { statusId, locationId } = CONTAINER_EVENTS[eventType];
 
 		const createdEvents = createEvents(
@@ -100,7 +100,8 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			UpdateMethod.SYSTEM,
 			EventType.UPDATE,
 		);
-		const [_, eventsUpserted] = await Promise.all([
+
+		await Promise.all([
 			supabase_db.parcels.upsert(
 				mysql_parcels.map((el) => ({
 					hbl: el.hbl,
@@ -110,7 +111,7 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 				})),
 			),
 			supabase_db.events.upsert(createdEvents),
-		]); // Type assertion needed due to Event type mismatch
+		]);
 
 		res.json({
 			message: "Container status updated",
@@ -119,29 +120,6 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 		next(error);
 		res.status(500).json({ message: (error as Error).message });
 	}
-};
-
-const createEvents = (
-	mysql_parcels: any[],
-	userId: number,
-	updatedAt: string,
-	statusId: number,
-	locationId: number,
-	updateMethod: UpdateMethod = UpdateMethod.SYSTEM,
-	type: EventType = EventType.UPDATE,
-): any[] => {
-	return mysql_parcels.map(
-		(parcel) =>
-			({
-				hbl: parcel.hbl,
-				statusId,
-				locationId,
-				userId: userId.toString(),
-				type,
-				updateMethod,
-				updatedAt: createUTCDate(new Date(updatedAt)),
-			} as Event),
-	);
 };
 
 export const containerController = {

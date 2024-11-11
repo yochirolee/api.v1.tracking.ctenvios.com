@@ -47,13 +47,13 @@ export const createExcelEvents = (
 		);
 };
 
-const eventMap = {
+/* const eventMap = {
 	fecha_aforo: { locationId: 5, statusId: 6 },
 	fecha_traslado: { locationId: 6, statusId: 7 },
 	fecha_entregado: { locationId: 7, statusId: 8 },
-};
+}; */
 
-export const createEventFromExcelDataRow = (
+/* export const createEventFromExcelDataRow = (
 	excelEvents: [],
 	hbl_list: Array<{ hbl: string }>,
 	userId: string,
@@ -70,4 +70,4 @@ export const createEventFromExcelDataRow = (
 				...eventMap[key as keyof typeof eventMap],
 			};
 		});
-};
+}; */

@@ -67,10 +67,9 @@ export const getByHbl = async (req: Request, res: Response, next: NextFunction) 
 export const importEventsFromExcel = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const user = req.user;
-
 		if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 		const file = req.file;
-		const userId = user.userId;
+		const userId = "42cbb03e-9d73-47a6-857e-77527c02bdc2";
 
 		const sheetNames = await readSheetNames(file.buffer);
 
@@ -114,15 +113,7 @@ export const importEventsFromExcel = async (req: Request, res: Response, next: N
 			}),
 		);
 
-		const totalEvents = sheetStats.reduce((sum, sheet) => sum + sheet.hbls, 0);
-		const allErrors = sheetStats.flatMap((sheet) => sheet.errors || []);
-
-		res.json({
-			total: totalEvents,
-			sheetStats,
-
-			errors: allErrors.length > 0 ? allErrors : undefined,
-		});
+		res.json(sheetStats);
 	} catch (error) {
 		next(error);
 	}
