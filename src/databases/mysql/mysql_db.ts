@@ -43,7 +43,7 @@ export const mysql_db = {
 			const queryStr = `
 	    select hbl,invoiceId,agency,agencyId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight
 		FROM parcels 
-		ORDER BY invoiceDate DESC 
+		ORDER BY invoiceId DESC 
 		LIMIT ? OFFSET ?
 	`;
 			const countQueryStr = "SELECT COUNT(*) as total FROM parcels";

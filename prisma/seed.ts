@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -8,8 +9,9 @@ async function main() {
 		console.log("Clearing existing locations...");
 		await prisma.location.deleteMany({});
 		await prisma.status.deleteMany({});
-		await prisma.role.deleteMany({});
 		await prisma.user.deleteMany({});
+		await prisma.role.deleteMany({});
+
 
 		const locations = [
 			{
@@ -48,14 +50,14 @@ async function main() {
 			},
 		];
 		const statuses = [
-			{ id: 1, status: "FACTURADO", name: "Facturado" },
-			{ id: 2, status: "EN_PALLET", name: "En Pallet" },
-			{ id: 3, status: "EN_DESPACHO", name: "En Despacho" },
-			{ id: 4, status: "EN_CONTENEDOR", name: "En Contenedor" },
-			{ id: 5, status: "EN_ESPERA_DE_AFORO", name: "En Espera de Aforo" },
-			{ id: 6, status: "AFORADO", name: "Aforado" },
-			{ id: 7, status: "EN_TRASLADO", name: "En Traslado" },
-			{ id: 8, status: "ENTREGADO", name: "Entregado" },
+			{ id: 1, status: "FACTURADO" },
+			{ id: 2, status: "EN_PALLET" },
+			{ id: 3, status: "EN_DESPACHO" },
+			{ id: 4, status: "EN_CONTENEDOR" },
+			{ id: 5, status: "EN_ESPERA_DE_AFORO" },
+			{ id: 6, status: "AFORADO" },
+			{ id: 7, status: "EN_TRASLADO" },
+			{ id: 8, status: "ENTREGADO" },
 		];
 		const roles = [
 			{ id: 1, role: "SUPERADMIN", name: "Superadmin" },
@@ -92,7 +94,7 @@ async function main() {
 			data: {
 				id: "42cbb03e-9d73-47a6-857e-77527c02bdc2",
 				email: "yleecruz@gmail.com",
-				password: "test",
+				password: bcrypt.hashSync("Audioslave*84", 10),
 				agencyId: 1,
 				roleId: 1,
 				name: "Yochiro Lee Cruz",

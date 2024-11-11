@@ -57,12 +57,15 @@ router.post("/login", async (req, res) => {
 			return res.status(400).json({ error: result.error.errors });
 		}
 		const { email, password } = result.data;
+		console.log(email, password, "login");
 
 		const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+		console.log(user, "user");
 		if (user && (await bcrypt.compare(password, user.password))) {
 			const token = jwt.sign(
 				{
 					userId: user.id,
+					username: user.name,
 					email: user.email,
 					role: user.role.role,
 					roleId: user.roleId,

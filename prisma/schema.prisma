@@ -64,7 +64,6 @@ model Issue {
   eventId     Int
   event       Event       @relation(fields: [eventId], references: [id])
   description String
-  status      IssueStatus @default(OPEN)
   createdAt   DateTime    @default(now()) @db.Timestamptz()
   resolvedAt  DateTime?   @db.Timestamptz()
   comments    Comment[]
@@ -73,7 +72,7 @@ model Issue {
   user        User        @relation(fields: [userId], references: [id])
   photoUrl    String?
 
-  @@index([hbl, status])
+  @@index([hbl])
 }
 
 model Comment {

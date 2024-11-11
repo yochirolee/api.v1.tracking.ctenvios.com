@@ -23,6 +23,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 			roleId: number;
 			agencyId: number;
 			email: string;
+			username: string;
 			role: string;
 		};
 
@@ -42,9 +43,9 @@ export const requireRoles = (allowedRoles: string[]) => {
 			return res.status(401).json({ message: "Unauthorized: No user found" });
 		}
 
-		console.log('User object:', user);
-		console.log('Allowed roles:', allowedRoles);
-		console.log('User role:', user.role);
+		console.log("User object:", user);
+		console.log("Allowed roles:", allowedRoles);
+		console.log("User role:", user.role);
 
 		if (!allowedRoles.includes(user.role)) {
 			return res.status(403).json({ message: "Unauthorized: Insufficient permissions" });

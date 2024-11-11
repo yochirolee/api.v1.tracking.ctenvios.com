@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma_db } from "../databases/prisma/prisma_db";
 import Joi from "joi";
-import { Event, EventType, UpdateMethod, IssueStatus, PrismaClient } from "@prisma/client";
+import { EventType, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -27,23 +27,6 @@ const issueSchema = Joi.object({
 	photoUrl: Joi.string().uri().allow(null).messages({
 		"string.uri": "Photo URL must be a valid URL",
 	}),
-	parcelStatus: Joi.string()
-		.valid(
-			"NO_DECLARADO",
-			"ROTO",
-			"RETASADO",
-			"MOJADO",
-			"DERRAME",
-			"CON_FALTANTE",
-			"PERDIDO",
-			"OTRO",
-			"ENTREGA_FALLIDA",
-		)
-		.required()
-		.messages({
-			"any.only":
-				"Parcel status must be NO_DECLARADO, ROTO, MOJADO, DERRAME, CON_FALTANTE, PERDIDO, or OTRO",
-		}),
 });
 
 /**
@@ -60,7 +43,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 };
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
-	/* try {
+	try {
 		console.log(req.body);
 		const validatedData = await issueSchema.validateAsync(req.body, {
 			abortEarly: false,
@@ -69,19 +52,18 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 		const issue = await prisma.$transaction(async (tx) => {
 			// Update parcel status
-			
+
 			// Create event with required fields
 			const event = await tx.event.update({
 				where: { id: validatedData.eventId },
-				data: { status: updatedParcel.status, type: EventType.ISSUE },
+				data: { status: validatedData.status, type: EventType.ISSUE },
 			});
 
 			// Create issue (excluding parcelStatus)
 			const issueData = {
-				hbl: updatedParcel.hbl,
+				hbl: event.hbl,
 				description: validatedData.description,
-				status: IssueStatus.OPEN,
-				userId: updatedParcel.userId,
+				userId: event.userId,
 				photoUrl: validatedData.photoUrl,
 				eventId: event.id,
 				createdAt: new Date(),
@@ -105,7 +87,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 			});
 		}
 		next(error);
-	} */
+	}
 };
 
 export const resolve = async (req: Request, res: Response, next: NextFunction) => {

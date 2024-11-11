@@ -1,4 +1,4 @@
-import { PrismaClient, IssueStatus, User } from "@prisma/client";
+import { PrismaClient, User } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -99,7 +99,7 @@ export const prisma_db = {
 		resolve: async (id: number) => {
 			const issue = await prisma.issue.update({
 				where: { id },
-				data: { resolvedAt: new Date(), status: IssueStatus.RESOLVED },
+				data: { resolvedAt: new Date() },
 			});
 			return issue;
 		},

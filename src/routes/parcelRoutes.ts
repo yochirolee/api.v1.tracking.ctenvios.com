@@ -8,7 +8,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const cache = apicache.middleware;
 
-router.get("/search", search);
+router.get("/search", authMiddleware, search);
 router.get("/hbl/:hbl", getByHbl);
 //router.post("/import", upload.single("file"), importFromExcel);
 /*router.post(
@@ -19,6 +19,6 @@ router.get("/hbl/:hbl", getByHbl);
 	importEventsFromExcel,
 ); */
 router.post("/import-events", upload.single("file"), importEventsFromExcel);
-router.get("/", cache("1 minutes"), getAll);
+router.get("/", getAll);
 
 export default router;
