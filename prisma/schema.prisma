@@ -149,3 +149,13 @@ enum EventType {
   ISSUE
   UPDATE
 }
+
+model error_log {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now()) @db.Timestamptz()
+  level     String
+  message   String
+  stack     String?
+  path      String?
+  method    String?
+}

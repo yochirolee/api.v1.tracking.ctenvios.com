@@ -8,17 +8,15 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const cache = apicache.middleware;
 
-router.get("/search", authMiddleware, search);
-router.get("/hbl/:hbl", getByHbl);
-//router.post("/import", upload.single("file"), importFromExcel);
-/*router.post(
- 	"/import-events",
+router.get("/search", authMiddleware, cache("5 minutes"), search);
+router.get("/hbl/:hbl", authMiddleware, cache("5 minutes"), getByHbl);
+router.post(
+	"/import-events",
 	authMiddleware,
 	requireRoles(["SUPERADMIN", "ADMIN"]),
 	upload.single("file"),
 	importEventsFromExcel,
-); */
-router.post("/import-events", upload.single("file"), importEventsFromExcel);
-router.get("/", getAll);
+);
+router.get("/", authMiddleware, cache("5 minutes"), getAll);
 
 export default router;

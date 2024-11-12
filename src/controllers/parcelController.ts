@@ -67,9 +67,10 @@ export const getByHbl = async (req: Request, res: Response, next: NextFunction) 
 export const importEventsFromExcel = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const user = req.user;
+		if (!user) return res.status(401).json({ message: "Unauthorized" });
 		if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 		const file = req.file;
-		const userId = "42cbb03e-9d73-47a6-857e-77527c02bdc2";
+		const userId = user.id;
 
 		const sheetNames = await readSheetNames(file.buffer);
 

@@ -39,7 +39,6 @@ export const supabase_db = {
 	},
 	events: {
 		upsert: async (events: Omit<Event, "id">[]): Promise<Event[]> => {
-			
 			const { data, error } = await supabase
 				.from<Event>("Event")
 				.upsert(events, { onConflict: "hbl,locationId,statusId" })
@@ -113,7 +112,7 @@ export const supabase_db = {
 	logger: {
 		log: async (errorLog: ErrorLog) => {
 			console.log("Logging error to Supabase", errorLog);
-			const { data, error } = await supabase.from("error_logs").insert([
+			const { data, error } = await supabase.from("error_log").insert([
 				{
 					timestamp: errorLog.timestamp,
 					level: errorLog.level,

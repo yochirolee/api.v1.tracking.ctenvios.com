@@ -10,12 +10,10 @@ import containersRoutes from "./routes/containerRoutes";
 import issueRoutes from "./routes/issueRouter";
 import path from "path";
 
-
 const app = express();
 
 // Use morgan for logging
 app.use(morgan("dev"));
-
 
 // Enable compression
 app.use(compression());
