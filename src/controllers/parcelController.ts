@@ -13,11 +13,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 		const limit = parseInt(req.query.limit as string) || 50;
 
 		const result = await mysql_db.parcels.getAll(page, limit);
-		const latest_events = await prisma_db.events.getLatestEvents(
-			result.packages.map((el) => el.hbl),
-		);
 
-		const formatedParcels = formatResult(result.packages, latest_events);
+		const formatedParcels = formatResult(result.packages, []);
 		res.json({ parcels: formatedParcels, meta: result.meta });
 	} catch (error) {
 		console.error("Error in getAllParcels:", error);
