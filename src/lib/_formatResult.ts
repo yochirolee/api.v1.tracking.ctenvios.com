@@ -35,7 +35,7 @@ export const formatResult = (packages: any[], events: any[]) => {
 			city,
 			province,
 			weight,
-			updatedAt: eventData?.updatedAt,
+			updatedAt: createUTCDate(new Date(eventData?.updatedAt)),
 			status: eventData?.status?.status || eventData?.status,
 			statusDetails: eventData?.statusDetails,
 			location: eventData?.location?.name || eventData?.location,
@@ -61,7 +61,7 @@ const getMySqlParcelLastEvent = (mysqlParcel: any) => {
 	if (containerDate) {
 		return {
 			locationId: 3,
-			updatedAt: new Date(containerDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(containerDate)),
 			location: "Contenedor",
 			status: "EN_CONTENEDOR",
 			statusDetails: containerName,
@@ -71,7 +71,7 @@ const getMySqlParcelLastEvent = (mysqlParcel: any) => {
 	if (palletDate) {
 		return {
 			locationId: 2,
-			updatedAt: new Date(palletDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(palletDate)),
 			location: "Almacen",
 			status: "EN_PALLET",
 			statusDetails: palletId,
@@ -81,7 +81,7 @@ const getMySqlParcelLastEvent = (mysqlParcel: any) => {
 	if (dispatchDate) {
 		return {
 			locationId: 2,
-			updatedAt: new Date(dispatchDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(dispatchDate)),
 			location: "Almacen",
 			status: "EN_DESPACHO",
 			statusDetails: `${dispatchId} ${dispatchStatus === 2 ? "Recibido" : "Generado"}`,
@@ -91,7 +91,7 @@ const getMySqlParcelLastEvent = (mysqlParcel: any) => {
 	if (invoiceDate) {
 		return {
 			locationId: 1,
-			updatedAt: new Date(invoiceDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(invoiceDate)),
 			location: "Agencia",
 			status: "FACTURADO",
 		};
@@ -169,7 +169,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 
 	createdEvents.push({
 		locationId: 1,
-		updatedAt: new Date(invoiceDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+		updatedAt: createUTCDate(new Date(invoiceDate)),
 		location: "Agencia",
 		status: "FACTURADO",
 	});
@@ -177,7 +177,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	if (dispatchDate) {
 		createdEvents.push({
 			locationId: 2,
-			updatedAt: new Date(dispatchDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(dispatchDate)),
 			location: "Almacen Central",
 			status: "EN_DESPACHO",
 			statusDetails: `${dispatchId} ${dispatchStatus === 2 ? "Recibido" : "Generado"}`,
@@ -187,7 +187,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	if (palletDate) {
 		createdEvents.push({
 			locationId: 2,
-			updatedAt: new Date(palletDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(palletDate)),
 			location: "Almacen Central",
 			status: "EN_PALLET",
 			statusDetails: palletId,
@@ -197,7 +197,7 @@ const createEventHistory = (mysqlParcel: any, events: any) => {
 	if (containerDate) {
 		createdEvents.push({
 			locationId: 3,
-			updatedAt: new Date(containerDate).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+			updatedAt: createUTCDate(new Date(containerDate)),
 			location: "Contenedor",
 			status: "EN_CONTENEDOR",
 			statusDetails: containerName,
@@ -226,6 +226,6 @@ export const createEvents = (
 		userId: userId.toString(),
 		type,
 		updateMethod,
-		updatedAt: new Date(updatedAt).toLocaleString('en-US', { timeZone: 'America/New_York' }),
+		updatedAt: createUTCDate(new Date(updatedAt)),
 	}));
 };

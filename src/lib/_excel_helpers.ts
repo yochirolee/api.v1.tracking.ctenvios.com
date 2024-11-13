@@ -21,7 +21,7 @@ const EVENT_MAPPINGS: Record<string, EventConfig> = {
 };
 
 export function createUTCDate(date: Date): Date {
-	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
+	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 1, 1));
 }
 
 export const createExcelEvents = (
