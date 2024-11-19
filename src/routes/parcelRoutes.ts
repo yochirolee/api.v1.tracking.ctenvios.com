@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import apicache from "apicache";
-import { getAll, getByHbl, importEventsFromExcel, search } from "../controllers/parcelController";
+import { getAll, getByHbl, search, uploadExcelByHbl } from "../controllers/parcelController";
 import { authMiddleware, requireRoles } from "../middlewares/authMiddleware";
 
 const router = express.Router();
@@ -10,12 +10,20 @@ const cache = apicache.middleware;
 
 router.get("/search", authMiddleware, cache("5 minutes"), search);
 router.get("/hbl/:hbl", authMiddleware, cache("5 minutes"), getByHbl);
-router.post(
+/* router.post(
 	"/import-events",
 	authMiddleware,
 	requireRoles(["SUPERADMIN", "ADMIN"]),
 	upload.single("file"),
 	importEventsFromExcel,
+); */
+
+router.post(
+	"/upload-excel",
+	authMiddleware,
+	requireRoles(["ROOT", "ADMIN"]),
+	upload.single("file"),
+	uploadExcelByHbl,
 );
 router.get("/", authMiddleware, cache("5 minutes"), getAll);
 

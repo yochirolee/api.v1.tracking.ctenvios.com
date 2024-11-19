@@ -8,6 +8,7 @@ import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import containersRoutes from "./routes/containerRoutes";
 import issueRoutes from "./routes/issueRouter";
+import statsRoutes from "./routes/statsRouter";
 import path from "path";
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/parcels", parcelRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/containers", containersRoutes);
 app.use("/api/issues", issueRoutes);
+app.use("/api/stats", statsRoutes);
 
 app.use(express.static(path.join(__dirname, "public")));
 

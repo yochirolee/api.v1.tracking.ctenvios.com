@@ -44,7 +44,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		console.log(req.body);
 		const validatedData = await issueSchema.validateAsync(req.body, {
 			abortEarly: false,
 			stripUnknown: true,
@@ -52,7 +51,10 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 		const issue = await prisma.$transaction(async (tx) => {
 			// Update parcel status
-
+			const parcel = await tx.parcel.update({
+				where: { hbl: validatedData.hbl },
+				data: { hasIssue: true },
+			});
 			// Create event with required fields
 			const event = await tx.event.update({
 				where: { id: validatedData.eventId },
@@ -66,13 +68,14 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 				userId: event.userId,
 				photoUrl: validatedData.photoUrl,
 				eventId: event.id,
+				issueType: validatedData.issueType,
 				createdAt: new Date(),
 				resolvedAt: null,
 			};
 
 			const issue = await tx.issue.create({ data: issueData as any });
 
-			return { issue, event };
+			return issue;
 		});
 
 		res.status(201).json(issue);
@@ -86,15 +89,6 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 				})),
 			});
 		}
-		next(error);
-	}
-};
-
-export const resolve = async (req: Request, res: Response, next: NextFunction) => {
-	try {
-		const issue = await prisma_db.issues.resolve(parseInt(req.params.id));
-		res.status(200).json(issue);
-	} catch (error) {
 		next(error);
 	}
 };

@@ -108,6 +108,7 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 					containerId: el.containerId,
 					invoiceId: el.invoiceId,
 					agencyId: el.agencyId,
+					hasIssue: false,
 				})),
 			),
 			supabase_db.events.upsert(createdEvents),

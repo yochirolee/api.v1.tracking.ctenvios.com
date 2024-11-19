@@ -54,7 +54,6 @@ export const mysql_db = {
 			]);
 
 			const totalPages = Math.ceil(total / limit);
-
 			return {
 				packages: packagesFound,
 				meta: {
@@ -95,7 +94,7 @@ export const mysql_db = {
 					whereClause = "hbl = ?";
 					queryParams = [trimmedSearchTerm];
 				} else if (!isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "InvoiceId = ?";
+					whereClause = "invoiceId = ?";
 					queryParams = [trimmedSearchTerm];
 				} else {
 					const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
@@ -172,6 +171,14 @@ export const mysql_db = {
 				console.error(`Error fetching parcel by HBL ${hbl}:`, error);
 				throw new Error("Failed to fetch parcel data");
 			}
+		},
+	},
+	stats: {
+		getStats: async () => {
+			const result = await mysql_client(
+				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
+			);
+			return result;
 		},
 	},
 };

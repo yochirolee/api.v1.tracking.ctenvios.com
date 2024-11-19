@@ -15,8 +15,18 @@ router.post("/register", async (req, res) => {
 	const { name, email, password, agencyId, roleId } = req.body;
 	console.log(name, email, password, agencyId, roleId);
 	// Validate required fields
-	if (!name || !email || !password || !agencyId || !roleId) {
-		return res.status(400).json({ error: "All fields are required" });
+	const missingFields = [];
+	if (!name) missingFields.push("name");
+	if (!email) missingFields.push("email");
+	if (!password) missingFields.push("password");
+	if (!agencyId) missingFields.push("agencyId");
+	if (!roleId) missingFields.push("roleId");
+
+	if (missingFields.length > 0) {
+		return res.status(400).json({
+			error: "Missing required fields",
+			missingFields,
+		});
 	}
 
 	// Validate email format
@@ -72,7 +82,10 @@ router.post("/login", async (req, res) => {
 				process.env.JWT_SECRET as string,
 				{ expiresIn: "4h" },
 			);
-			console.log(token, "token");
+			await prisma.user.update({
+				where: { id: user.id },
+				data: { lastLogin: new Date() },
+			});
 			res.json({ token });
 		} else {
 			res.status(401).json({ error: "Invalid credentials" });
@@ -91,7 +104,7 @@ router.get("/", authMiddleware, async (req, res) => {
 	const user = req.user;
 	console.log(user, "user");
 
-	if (user?.role !== "SUPERADMIN" && user?.role !== "ADMIN") {
+	if (user?.role !== "ROOT" && user?.role !== "ADMINISTRATOR") {
 		return res.status(403).json({ error: "Unauthorized access" });
 	}
 	const users = await prisma.user.findMany({
@@ -101,6 +114,10 @@ router.get("/", authMiddleware, async (req, res) => {
 			email: true,
 			role: true,
 			agencyId: true,
+			isActive: true,
+			lastLogin: true,
+			createdAt: true,
+			updatedAt: true,
 		},
 	});
 

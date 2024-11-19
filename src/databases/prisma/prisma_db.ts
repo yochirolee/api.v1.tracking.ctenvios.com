@@ -1,4 +1,6 @@
-import { PrismaClient, User } from "@prisma/client";
+import { EventType, PrismaClient, User } from "@prisma/client";
+import { mysql_db } from "../mysql/mysql_db";
+import { formatResult } from "../../lib/_formatResult";
 
 const prisma = new PrismaClient();
 
@@ -89,19 +91,18 @@ export const prisma_db = {
 	},
 	issues: {
 		getAll: async () => {
-			const issues = await prisma.issue.findMany({
-				include: {
-					comments: true,
+			const issues = await prisma.parcel.findMany({
+				where: {
+					hasIssue: true,
 				},
 			});
-			return issues;
-		},
-		resolve: async (id: number) => {
-			const issue = await prisma.issue.update({
-				where: { id },
-				data: { resolvedAt: new Date() },
-			});
-			return issue;
+
+			const mysql_data = await mysql_db.parcels.getInHblArray(
+				issues.map((issue) => issue.hbl),
+				true,
+			);
+			const issuesWithMysqlData = formatResult(mysql_data, issues);
+			return issuesWithMysqlData;
 		},
 	},
 	users: {
