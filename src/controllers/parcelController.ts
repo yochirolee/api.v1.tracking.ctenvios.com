@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import readXlsxFile, { readSheetNames } from "read-excel-file/node";
-import { formatResult, formatResultwithEvents } from "../lib/_formatResult";
+import { createEvents, formatResult, formatResultwithEvents } from "../lib/_formatResult";
 import { mysql_db } from "../databases/mysql/mysql_db";
 import { supabase_db } from "../databases/supabase/supabase_db";
 import { prisma_db } from "../databases/prisma/prisma_db";
@@ -161,6 +161,22 @@ export const uploadExcelByHbl = async (req: Request, res: Response, next: NextFu
 		);
 
 		res.send(result);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const upsertEvents = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { hbls, locationId, statusId, updatedAt } = req.body;
+		const mysql_data = await mysql_db.parcels.getInHblArray(hbls, false);
+		const userId = req.user.userId;
+		const dateUpdatedAt = updatedAt ? new Date(updatedAt) : new Date();
+
+		const eventsToUpsert = createEvents(mysql_data, userId, updatedAt, locationId, statusId);
+		const eventsUpserted = await Promise.all([supabase_db.events.upsert(eventsToUpsert)]);
+		res.json(eventsUpserted);
+		
 	} catch (error) {
 		next(error);
 	}

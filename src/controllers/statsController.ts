@@ -10,3 +10,13 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
 		res.status(500).json({ message: "Internal server error" });
 	}
 };
+
+export const getDailySales = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const result = await mysql_db.stats.getDailySales();
+		res.json(result);
+	} catch (error) {
+		console.error("Error in getDailySales:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};
