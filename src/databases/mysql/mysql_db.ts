@@ -182,7 +182,13 @@ export const mysql_db = {
 		},
 		getDailySales: async () => {
 			const result = await mysql_client(
-				"SELECT  fecha as date,  SUM(orden_envio.total) AS sales FROM u373067935_cte.orden_envio WHERE orden_envio.agencia = 2 AND fecha BETWEEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND CURDATE() GROUP BY fecha ORDER BY fecha Asc;",
+				"SELECT  fecha as date,  SUM(total+tarjeta_credito) AS sales FROM u373067935_cte.orden_envio WHERE orden_envio.agencia = 2 AND fecha BETWEEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND CURDATE() GROUP BY fecha ORDER BY fecha Asc;",
+			);
+			return result;
+		},
+		getEmployeeSales: async () => {
+			const result = await mysql_client(
+				"   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = 2 group by usuario ORDER BY sales DESC;",
 			);
 			return result;
 		},
