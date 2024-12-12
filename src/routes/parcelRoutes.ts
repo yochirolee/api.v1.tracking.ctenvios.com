@@ -14,8 +14,8 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const cache = apicache.middleware;
 
-router.get("/search", authMiddleware, cache("5 minutes"), search);
-router.get("/hbl/:hbl", authMiddleware, cache("5 minutes"), getByHbl);
+router.get("/search", authMiddleware, search);
+router.get("/hbl/:hbl", authMiddleware, getByHbl);
 router.post("/upsert-events", authMiddleware, upsertEvents);
 router.post(
 	"/upload-excel",

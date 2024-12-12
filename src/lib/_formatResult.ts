@@ -8,8 +8,7 @@ export const formatResult = (packages: any[], events: any[]) => {
 
 	return packages.map((pkg) => {
 		const matchingEvent = eventMap.get(pkg.hbl);
-		const lastMySqlEvent = matchingEvent ? null : getMySqlParcelLastEvent(pkg);
-		const eventData = matchingEvent || lastMySqlEvent;
+		const eventData = matchingEvent || getMySqlParcelLastEvent(pkg);
 
 		const {
 			hbl,
@@ -24,21 +23,26 @@ export const formatResult = (packages: any[], events: any[]) => {
 			weight,
 		} = pkg;
 
+		// Store camelCase conversions in variables to avoid repeated calls
+		const camelCaseSender = toCamelCase(sender);
+		const camelCaseReceiver = toCamelCase(receiver);
+		const camelCaseDescription = toCamelCase(description);
+
 		return {
 			hbl,
 			invoiceId,
 			invoiceDate,
 			agency,
-			sender: toCamelCase(sender),
-			receiver: toCamelCase(receiver),
-			description: toCamelCase(description),
+			sender: camelCaseSender,
+			receiver: camelCaseReceiver,
+			description: camelCaseDescription,
 			city,
 			province,
 			weight,
 			updatedAt: createUTCDate(new Date(eventData?.updatedAt)),
-			status: eventData?.status?.status || eventData?.status,
+			status: eventData?.status?.status ?? eventData?.status,
 			statusDetails: eventData?.statusDetails,
-			location: eventData?.location?.name || eventData?.location,
+			location: eventData?.location?.name ?? eventData?.location,
 		};
 	});
 };

@@ -170,13 +170,13 @@ export const upsertEvents = async (req: Request, res: Response, next: NextFuncti
 	try {
 		const { hbls, locationId, statusId, updatedAt } = req.body;
 		const mysql_data = await mysql_db.parcels.getInHblArray(hbls, false);
-		const userId = req.user.userId;
-		const dateUpdatedAt = updatedAt ? new Date(updatedAt) : new Date();
+		const { userId } = req.user;
 
-		const eventsToUpsert = createEvents(mysql_data, userId, updatedAt, locationId, statusId);
+		const eventsToUpsert = createEvents(mysql_data, userId, updatedAt, statusId, locationId);
+		console.log(eventsToUpsert);
+		const parcelsUpserted = await supabase_db.parcels.upsert(mysql_data);
 		const eventsUpserted = await Promise.all([supabase_db.events.upsert(eventsToUpsert)]);
 		res.json(eventsUpserted);
-		
 	} catch (error) {
 		next(error);
 	}
