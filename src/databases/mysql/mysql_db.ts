@@ -41,11 +41,49 @@ export const mysql_db = {
 			const offset = (page - 1) * limit;
 
 			const queryStr = `
-	    select hbl,invoiceId,agency,agencyId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight
-		FROM parcels 
-		ORDER BY invoiceId DESC 
-		LIMIT ? OFFSET ?
-	`;
+				SELECT 
+					oe_emp_det.codigo_paquete AS hbl,
+					oe.cod_envio AS invoiceId,
+					oe_emp_det.tipo_producto AS parcelType,
+					oe_emp_det.descripcion AS description,
+					oe.cliente AS senderId,
+					CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
+					oe.destinatario AS receiverId,
+					c.cel AS senderMobile,
+					c.email AS senderEmail,
+					CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) AS receiver,
+					d.cel AS receiverMobile,
+					d.documento AS receiverCi,
+					cc.ciudad AS city,
+					ci.ciudad AS province,
+					oe.fecha AS invoiceDate,
+					oe_emp_det.estado AS currentLocation,
+					oe_emp_det.num_contenedor AS containerName,
+					co.fecha_update AS containerDate,
+					oe_emp_det.contenedor AS containerId,
+					d.ciudad AS cityId,
+					d.estado AS stateId,
+					oe_emp_det.pallet AS palletId,
+					despachos.codigo AS dispatchId,
+					despachos.fecha AS dispatchDate,
+					despachos.estado AS dispatchStatus,
+					p.fecha AS palletDate,
+					a.nombre AS agency,
+					a.id AS agencyId,
+					oe_emp_det.peso AS weight
+				FROM orden_envio_emp_det oe_emp_det
+					JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
+					JOIN agencias a ON oe_emp_det.agencia = a.id
+					LEFT JOIN destinatarios d ON d.codigo = oe.destinatario
+					LEFT JOIN pallets p ON oe_emp_det.pallet = p.codigo
+					LEFT JOIN contenedores co ON oe_emp_det.contenedor = co.codigo
+					LEFT JOIN clientes c ON oe.cliente = c.codigo
+					LEFT JOIN ciudades_cuba cc ON d.ciudad = cc.codigo
+					LEFT JOIN ciudades ci ON ci.id = d.estado
+					LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
+				ORDER BY invoiceId DESC 
+				LIMIT ? OFFSET ?
+			`;
 			const countQueryStr = "SELECT COUNT(*) as total FROM parcels";
 
 			const [packagesFound, [{ total }]] = await Promise.all([
@@ -73,32 +111,70 @@ export const mysql_db = {
 
 				// Base query structure
 				const baseQuery = `
-					select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
-						   sender,receiver,city,province,description,containerName,weight 
-					FROM \`parcels\` WHERE`;
+					SELECT 
+						oe_emp_det.codigo_paquete AS hbl,
+						oe.cod_envio AS invoiceId,
+						oe_emp_det.tipo_producto AS parcelType,
+						oe_emp_det.descripcion AS description,
+						oe.cliente AS senderId,
+						CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
+						oe.destinatario AS receiverId,
+						c.cel AS senderMobile,
+						c.email AS senderEmail,
+						CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) AS receiver,
+						d.cel AS receiverMobile,
+				     	d.documento AS receiverCi,
+						cc.ciudad AS city,
+						ci.ciudad AS province,
+						oe.fecha AS invoiceDate,
+						oe_emp_det.estado AS currentLocation,
+						oe_emp_det.num_contenedor AS containerName,
+						co.fecha_update AS containerDate,
+						oe_emp_det.contenedor AS containerId,
+						d.ciudad AS cityId,
+						d.estado AS stateId,
+						oe_emp_det.pallet AS palletId,
+						despachos.codigo AS dispatchId,
+						despachos.fecha AS dispatchDate,
+						despachos.estado AS dispatchStatus,
+						p.fecha AS palletDate,
+						a.nombre AS agency,
+						a.id AS agencyId,
+						oe_emp_det.peso AS weight
+					FROM orden_envio_emp_det oe_emp_det
+						JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
+						JOIN agencias a ON oe_emp_det.agencia = a.id
+						LEFT JOIN destinatarios d ON d.codigo = oe.destinatario
+						LEFT JOIN pallets p ON oe_emp_det.pallet = p.codigo
+						LEFT JOIN contenedores co ON oe_emp_det.contenedor = co.codigo
+						LEFT JOIN clientes c ON oe.cliente = c.codigo
+						LEFT JOIN ciudades_cuba cc ON d.ciudad = cc.codigo
+						LEFT JOIN ciudades ci ON ci.id = d.estado
+						LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
+					WHERE`;
 
 				let whereClause: string;
 				let queryParams: any[] = [];
 
 				// Determine the WHERE clause based on search term
 				if (trimmedSearchTerm.length === 10 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "senderMobile = ?";
+					whereClause = "c.cel = ?";
 					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.length === 8 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "receiverMobile = ?";
+					whereClause = "d.cel = ?";
 					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.length === 11 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "receiverCi = ?";
+					whereClause = "d.documento = ?";
 					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.startsWith("CTE")) {
-					whereClause = "hbl = ?";
+					whereClause = "oe_emp_det.codigo_paquete = ?";
 					queryParams = [trimmedSearchTerm];
 				} else if (!isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "invoiceId = ?";
+					whereClause = "oe.cod_envio = ?";
 					queryParams = [trimmedSearchTerm];
 				} else {
 					const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
-					whereClause = "sender LIKE ? OR receiver LIKE ? OR description LIKE ?";
+					whereClause = "CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) LIKE ? OR CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) LIKE ? OR oe_emp_det.descripcion LIKE ?";
 					queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard];
 				}
 
