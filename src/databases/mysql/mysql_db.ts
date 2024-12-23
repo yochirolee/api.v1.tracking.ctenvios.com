@@ -27,8 +27,46 @@ export const mysql_db = {
 		},
 		getParcelsByContainerId: async (containerId: number, verbose = false) => {
 			const queryStr = verbose
-				? "select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, sender,receiver,city,province,description,containerName,weight  from parcels where containerId = ?"
-				: "SELECT hbl,invoiceId,containerId,parcelType as type, agencyId,currentLocation from parcels where containerId = ?";
+				? `SELECT 
+					oe_emp_det.codigo_paquete AS hbl,
+					a.nombre AS agency,
+					a.id AS agencyId,
+					oe.cod_envio AS invoiceId,
+					co.fecha_update AS containerDate,
+					oe.fecha AS invoiceDate,
+					oe_emp_det.pallet AS palletId,
+					p.fecha AS palletDate,
+					despachos.fecha AS dispatchDate,
+					despachos.codigo AS dispatchId,
+					CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
+					CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) AS receiver,
+					cc.ciudad AS city,
+					ci.ciudad AS province,
+					oe_emp_det.descripcion AS description,
+					oe_emp_det.num_contenedor AS containerName,
+					oe_emp_det.peso AS weight
+				FROM orden_envio_emp_det oe_emp_det
+					JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
+					JOIN agencias a ON oe_emp_det.agencia = a.id
+					LEFT JOIN destinatarios d ON d.codigo = oe.destinatario
+					LEFT JOIN pallets p ON oe_emp_det.pallet = p.codigo
+					LEFT JOIN contenedores co ON oe_emp_det.contenedor = co.codigo
+					LEFT JOIN clientes c ON oe.cliente = c.codigo
+					LEFT JOIN ciudades_cuba cc ON d.ciudad = cc.codigo
+					LEFT JOIN ciudades ci ON ci.id = d.estado
+					LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
+				WHERE oe_emp_det.contenedor = ?`
+				: `SELECT 
+					oe_emp_det.codigo_paquete AS hbl,
+					oe.cod_envio AS invoiceId,
+					oe_emp_det.contenedor AS containerId,
+					oe_emp_det.tipo_producto AS type,
+					a.id AS agencyId,
+					oe_emp_det.estado AS currentLocation
+				FROM orden_envio_emp_det oe_emp_det
+					JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
+					JOIN agencias a ON oe_emp_det.agencia = a.id
+				WHERE oe_emp_det.contenedor = ?`;
 			const result = await mysql_client(queryStr, [containerId]);
 
 			return result;
