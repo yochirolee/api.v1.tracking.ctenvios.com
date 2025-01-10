@@ -131,34 +131,68 @@ export const uploadExcelByHbl = async (req: Request, res: Response, next: NextFu
 		const { userId } = req.user;
 		if (!userId) return res.status(401).json({ message: "Unauthorized" });
 		if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-		const file = req.file;
-		const sheetNames = await readSheetNames(file.buffer);
 
-		const result = await Promise.all(
-			sheetNames.flatMap(async (sheetName) => {
-				const { rows, errors } = await readXlsxFile(file.buffer, {
-					schema: schemas.excelSchema,
-					sheet: sheetName,
-				});
-				const uniqueHbls = [...new Set(rows.map((row) => row.hbl))] as string[];
-				const existing_hbl = await mysql_db.parcels.getInHblArray(uniqueHbls, false);
-				const events = rows.flatMap((row) => createExcelEvents(row, existing_hbl, userId));
-				const uniqueEvents = events.reduce((acc, event) => {
-					const key = `${event.hbl}_${event.status}_${event.timestamp}`;
-					return { ...acc, [key]: event };
-				}, {});
-				const [_, eventsUpserted] = await Promise.all([
-					supabase_db.parcels.upsert(existing_hbl),
-					supabase_db.events.upsert(Object.values(uniqueEvents)),
-				]);
+		// Read all sheets in a single pass
+		const buffer = req.file.buffer;
+		const sheetNames = await readSheetNames(buffer);
 
-				return {
-					sheetName,
-					events: eventsUpserted.length,
-					errors: errors.length > 0 ? errors : undefined,
-				};
-			}),
-		);
+		// Process sheets in chunks to reduce memory usage
+		const CHUNK_SIZE = 1000;
+		let allEvents = [];
+		let processedSheets = [];
+		let allHbls = new Set<string>();
+
+		// Process each sheet
+		for (const sheetName of sheetNames) {
+			const { rows, errors } = await readXlsxFile(buffer, {
+				schema: schemas.excelSchema,
+				sheet: sheetName,
+			});
+
+			// Collect HBLs
+			rows.forEach((row) => allHbls.add(row.hbl as string));
+
+			// Store sheet data for later processing
+			processedSheets.push({
+				sheetName,
+				rows,
+				errors: errors.length > 0 ? errors : undefined,
+			});
+		}
+
+		// Fetch all existing HBLs in one query
+		const existing_hbl = await mysql_db.parcels.getInHblArray([...allHbls], false);
+
+		// Process events in chunks
+		for (const sheet of processedSheets) {
+			const events = sheet.rows.flatMap((row) => createExcelEvents(row, existing_hbl, userId));
+
+			// Process events in chunks to avoid memory issues
+			for (let i = 0; i < events.length; i += CHUNK_SIZE) {
+				const chunk = events.slice(i, i + CHUNK_SIZE);
+				const uniqueChunkEvents = Object.values(
+					chunk.reduce((acc, event) => {
+						const key = `${event.hbl}_${event.status}_${event.timestamp}`;
+						acc[key] = event;
+						return acc;
+					}, {}),
+				);
+				allEvents.push(...uniqueChunkEvents);
+			}
+		}
+
+		// Batch upsert operations
+		await Promise.all([
+			supabase_db.parcels.upsert(existing_hbl),
+			supabase_db.events.upsert(allEvents as any),
+		]);
+
+		// Format response
+		const result = processedSheets.map((sheet) => ({
+			sheetName: sheet.sheetName,
+			events: sheet.rows.length,
+			errors: sheet.errors,
+		}));
 
 		res.send(result);
 	} catch (error) {
@@ -173,9 +207,8 @@ export const upsertEvents = async (req: Request, res: Response, next: NextFuncti
 		const { userId } = req.user;
 
 		const eventsToUpsert = createEvents(mysql_data, userId, updatedAt, statusId, locationId);
-		console.log(eventsToUpsert);
 		const parcelsUpserted = await supabase_db.parcels.upsert(mysql_data);
-		const eventsUpserted = await Promise.all([supabase_db.events.upsert(eventsToUpsert)]);
+		const eventsUpserted = await supabase_db.events.upsert(eventsToUpsert);
 		res.json(eventsUpserted);
 	} catch (error) {
 		next(error);

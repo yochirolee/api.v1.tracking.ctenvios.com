@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import compression from "compression";
 import morgan from "morgan";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import parcelRoutes from "./routes/parcelRoutes";
 
 import userRoutes from "./routes/userRoutes";
@@ -18,6 +20,13 @@ app.use(morgan("dev"));
 
 // Enable compression
 app.use(compression());
+app.use(helmet());
+app.use(
+	rateLimit({
+		windowMs: 15 * 60 * 1000, // 15 minutes
+		max: 100, // Limit each IP to 100 requests per windowMs
+	}),
+);
 
 // Setup cache
 
@@ -44,5 +53,3 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
 	console.log(`Server is running on port ${PORT}`);
 });
-
-export default app;

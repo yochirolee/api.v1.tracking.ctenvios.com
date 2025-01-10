@@ -1,9 +1,7 @@
-import { EventType, PrismaClient, User } from "@prisma/client";
+import { User } from "@prisma/client";
+import prisma from "../../config/prisma-config";
 import { mysql_db } from "../mysql/mysql_db";
 import { formatResult } from "../../lib/_formatResult";
-
-const prisma = new PrismaClient();
-
 export const prisma_db = {
 	/*	parcels: {
 		getAll: async () => {

@@ -23,19 +23,14 @@ export const formatResult = (packages: any[], events: any[]) => {
 			weight,
 		} = pkg;
 
-		// Store camelCase conversions in variables to avoid repeated calls
-		const camelCaseSender = toCamelCase(sender);
-		const camelCaseReceiver = toCamelCase(receiver);
-		const camelCaseDescription = toCamelCase(description);
-
 		return {
 			hbl,
 			invoiceId,
 			invoiceDate,
 			agency,
-			sender: camelCaseSender,
-			receiver: camelCaseReceiver,
-			description: camelCaseDescription,
+			sender: toCamelCase(sender),
+			receiver: toCamelCase(receiver),
+			description: toCamelCase(description),
 			city,
 			province,
 			weight,

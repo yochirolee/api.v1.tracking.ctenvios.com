@@ -1,5 +1,5 @@
 import express from "express";
-import { PrismaClient, Role } from "@prisma/client";
+import prisma from "../config/prisma-config";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import { schemas } from "../shemas/shemas";
 import { supabase_db } from "../databases/supabase/supabase_db";
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
 
 // User registration
 router.post("/register", async (req, res) => {
