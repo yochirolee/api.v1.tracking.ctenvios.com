@@ -60,8 +60,8 @@ async function main() {
 			{ id: 8, status: "ENTREGADO" },
 		];
 		const roles = [
-			{ id: 1, role: "SUPERADMIN", name: "Superadmin" },
-			{ id: 2, role: "ADMIN", name: "Admin" },
+			{ id: 1, role: "ROOT", name: "Superadmin" },
+			{ id: 2, role: "ADMINISTRATOR", name: "Admin" },
 			{ id: 3, role: "MANAGER", name: "Manager" },
 			{ id: 4, role: "DRIVER", name: "Driver" },
 			{ id: 5, role: "WAREHOUSE", name: "Warehouse" },

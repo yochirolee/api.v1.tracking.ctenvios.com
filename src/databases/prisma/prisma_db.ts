@@ -1,5 +1,5 @@
 import { User } from "@prisma/client";
-import prisma from "../../config/prisma-config";
+import prisma from "./prisma_client";
 import { mysql_db } from "../mysql/mysql_db";
 import { formatResult } from "../../lib/_formatResult";
 export const prisma_db = {
@@ -89,11 +89,7 @@ export const prisma_db = {
 	},
 	issues: {
 		getAll: async () => {
-			const issues = await prisma.parcel.findMany({
-				where: {
-					hasIssue: true,
-				},
-			});
+			const issues = await prisma.issue.findMany();
 
 			const mysql_data = await mysql_db.parcels.getInHblArray(
 				issues.map((issue) => issue.hbl),

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma_db } from "../databases/prisma/prisma_db";
 import Joi from "joi";
-import { EventType, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -51,24 +51,20 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 		const issue = await prisma.$transaction(async (tx) => {
 			// Update parcel status
-			const parcel = await tx.parcel.update({
-				where: { hbl: validatedData.hbl },
-				data: { hasIssue: true },
-			});
+
 			// Create event with required fields
 			const event = await tx.event.update({
 				where: { id: validatedData.eventId },
-				data: { status: validatedData.status, type: EventType.ISSUE },
+				data: { status: validatedData.status },
 			});
 
 			// Create issue (excluding parcelStatus)
 			const issueData = {
 				hbl: event.hbl,
-				description: validatedData.description,
+				reason: validatedData.reason,
 				userId: event.userId,
 				photoUrl: validatedData.photoUrl,
 				eventId: event.id,
-				issueType: validatedData.issueType,
 				createdAt: new Date(),
 				resolvedAt: null,
 			};

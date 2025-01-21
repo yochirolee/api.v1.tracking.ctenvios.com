@@ -13,7 +13,7 @@ export const mysql_db = {
 				console.log(error);
 			}
 		},
-		getAll: async (limit = 20) => {
+		getAll: async (limit = 30) => {
 			try {
 				const result = await mysql_client(
 					"select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores order by codigo DESC limit ?	;",
@@ -212,7 +212,8 @@ export const mysql_db = {
 					queryParams = [trimmedSearchTerm];
 				} else {
 					const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
-					whereClause = "CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) LIKE ? OR CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) LIKE ? OR oe_emp_det.descripcion LIKE ?";
+					whereClause =
+						"CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) LIKE ? OR CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) LIKE ? OR oe_emp_det.descripcion LIKE ?";
 					queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard];
 				}
 

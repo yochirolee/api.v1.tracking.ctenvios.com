@@ -1,4 +1,4 @@
-import { Event, EventType } from "@prisma/client";
+import { Event } from "@prisma/client";
 import { UpdateMethod } from "@prisma/client";
 import { toCamelCase } from "./_toCamelCase";
 import { createUTCDate } from "./_excel_helpers";
@@ -215,15 +215,14 @@ export const createEvents = (
 	updatedAt: string,
 	statusId: number,
 	locationId: number,
-	updateMethod: UpdateMethod = UpdateMethod.SYSTEM,
-	type: EventType = EventType.UPDATE,
+	updateMethod: UpdateMethod = UpdateMethod.EXCEL_FILE,
 ): any[] => {
 	return mysql_parcels.map((parcel) => ({
 		hbl: parcel.hbl,
 		statusId,
 		locationId,
 		userId: userId.toString(),
-		type,
+
 		updateMethod,
 		updatedAt: createUTCDate(new Date(updatedAt)),
 	}));

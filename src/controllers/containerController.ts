@@ -2,9 +2,8 @@ import { mysql_db } from "../databases/mysql/mysql_db";
 import { Request, Response, NextFunction } from "express";
 import { createEvents, formatResult } from "../lib/_formatResult";
 import { prisma_db } from "../databases/prisma/prisma_db";
-import { EventType, Status, Event, UpdateMethod } from "@prisma/client";
+import { UpdateMethod } from "@prisma/client";
 import { supabase_db } from "../databases/supabase/supabase_db";
-import { createUTCDate } from "../lib/_excel_helpers";
 
 const getAll = async (req: Request, res: Response, next: NextFunction) => {
 	const containers = await mysql_db.containers.getAll();
@@ -98,7 +97,6 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			statusId,
 			locationId,
 			UpdateMethod.SYSTEM,
-			EventType.UPDATE,
 		);
 
 		await Promise.all([
@@ -108,7 +106,6 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 					containerId: el.containerId,
 					invoiceId: el.invoiceId,
 					agencyId: el.agencyId,
-					hasIssue: false,
 				})),
 			),
 			supabase_db.events.upsert(createdEvents),

@@ -1,4 +1,4 @@
-import { Event, EventType, UpdateMethod } from "@prisma/client";
+import { Event, UpdateMethod } from "@prisma/client";
 
 interface EventConfig {
 	locationId: number;
@@ -42,7 +42,7 @@ export const createExcelEvents = (
 				updatedAt: createUTCDate(row[key]),
 				updateMethod: UpdateMethod.EXCEL_FILE,
 				userId,
-				type: EventType.UPDATE,
+				
 			}),
 		);
 };

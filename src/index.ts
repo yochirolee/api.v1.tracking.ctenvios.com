@@ -4,7 +4,7 @@ import compression from "compression";
 import morgan from "morgan";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import parcelRoutes from "./routes/parcelRoutes";
+import parcel_routes from "./routes/parcel_routes";
 
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
@@ -34,7 +34,7 @@ app.use(cors());
 app.use(express.json());
 
 // You can also set different cache durations for different routes
-app.use("/api/parcels", parcelRoutes);
+app.use("/api/parcels", parcel_routes);
 app.use("/api/users", userRoutes);
 app.use("/api/containers", containersRoutes);
 app.use("/api/issues", issueRoutes);
