@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import apicache from "apicache";
 import {
+	createEvent,
 	getAll,
 	getByHbl,
 	search,
@@ -17,6 +18,7 @@ const cache = apicache.middleware;
 router.get("/search", authMiddleware, search);
 router.get("/hbl/:hbl", authMiddleware, getByHbl);
 router.post("/upsert-events", authMiddleware, upsertEvents);
+router.post("/create-event", createEvent);
 router.post(
 	"/upload-excel",
 	authMiddleware,

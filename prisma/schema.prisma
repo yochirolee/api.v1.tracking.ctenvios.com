@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -8,148 +8,181 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Parcel {
-  hbl String @unique
-  containerId Int?
-  invoiceId Int
-  agencyId Int ?
-  events Event[]
-  issues Issue[]
-
-}
-
-model Event {
-  id           Int          @id @default(autoincrement())
-  hbl          String
-  parcel       Parcel       @relation(fields: [hbl], references: [hbl], onDelete: Cascade, onUpdate: Cascade)
-  locationId   Int
-  location     Location     @relation(fields: [locationId], references: [id])
-  statusId     Int
-  status       Status       @relation(fields: [statusId], references: [id])
-  updatedAt    DateTime     @db.Timestamptz()
-  updateMethod UpdateMethod @default(SYSTEM)
-  userId       String
-  user         User         @relation(fields: [userId], references: [id])
- 
-  @@unique([hbl,statusId,locationId])
-  
-}
-
-model Status {
-  id Int @id @default(autoincrement())
-  status String @unique
-  description String?
-  events Event[]
-}
-
-
-
-model Issue {
-  id          Int         @id @default(autoincrement())
-  hbl         String
-  parcel      Parcel      @relation(fields: [hbl], references: [hbl], onDelete: Cascade, onUpdate: Cascade)
-  reason String
-  createdAt   DateTime    @default(now()) @db.Timestamptz()
-  resolvedAt  DateTime?   @db.Timestamptz()
-  comments    Comment[]
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  photoUrl    String?
-  status IssueStatus @default(OPEN)
-  locationId Int
-  location Location @relation(fields: [locationId], references: [id])
-
-  @@index([hbl])
-}
-
-model Comment {
-  id        Int   @id @default(autoincrement())
-  issueId   Int
-  issue     Issue    @relation(fields: [issueId], references: [id])
-  comment   String
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  photoUrl  String?
-
-  @@index([issueId])
-}
-
 model User {
   id        String    @id @default(uuid())
   email     String    @unique
   password  String
   name      String?
-  role      Role      @relation(fields: [roleId], references: [id])
-  roleId    Int
+  role      Roles   
+  
   createdAt DateTime  @default(now()) @db.Timestamptz()
   updatedAt DateTime  @updatedAt @db.Timestamptz()
+  createdBy User? @relation("UserCreator", fields: [createdById], references: [id])
+  createdById String?
   isActive Boolean @default(true)
   lastLogin DateTime? @db.Timestamptz()
   agencyId  Int
-  events    Event[]
-  issues    Issue[]
-  comments  Comment[]
-  refreshToken String?
+  agency Agency @relation(fields: [agencyId], references: [id])
+  shipments Shipment[]
+  events ShipmentEvent[]
+  issues Issues[] @relation("IssueCreator")
+  comments IssueComments[]
+  refreshToken String? //how to handle this?
+  resolvedIssues Issues[] @relation("IssueResolver")
+  users User[] @relation("UserCreator")
 
   @@index([email])
 }
 
-model Location {
-  id          Int      @id
-  name        String   @unique
-  description String?
-  events      Event[]
-  issues      Issue[]
-}
-
-
-
-model Role {
+model Agency {
   id Int @id @default(autoincrement())
-  role String @unique
-  name String @unique
+  name String
+  shipments Shipment[]
   users User[]
-  permissions Permission[]
-
 }
 
-model Permission {
+
+enum Roles {
+  ROOT
+  ADMINISTRATOR
+  AGENCY_ADMIN
+  MESSENGER
+  SALES
+  CARRIER_MESSENGER
+  CARRIER_ADMIN
+  CARRIER_WAREHOUSE_MANAGER
+  CARRIER_WAREHOUSE_WORKER
+  WAREHOUSE_MANAGER
+  WAREHOUSE_WORKER
+  AGENT
+}
+
+model Shipment {
+  hbl String @unique @id
+  invoiceId Int?
+  locationId Int
+  location Location @relation(fields: [locationId], references: [id])
+  status ShipmentStatus @default(CREATED)
+  container Container? @relation(fields: [containerId], references: [id])
+  sender String?
+  receiver String?
+  description String?
+  state String?
+  city String?
+  containerId Int?
+  agencyId Int?
+  agency Agency? @relation(fields: [agencyId], references: [id])
+  events ShipmentEvent[]
+  issues Issues[]
+  updateMethod UpdateMethod @default(SYSTEM)
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now()) @db.Timestamptz()
+  @@index([hbl])
+  
+}
+
+model ShipmentEvent {
   id Int @id @default(autoincrement())
-  permission String @unique
-  roleId Int
-  role Role @relation(fields: [roleId], references: [id])
-}
-
-
-enum IssueStatus {
-  OPEN
-  CLOSED
+  hbl String
+  shipment Shipment @relation(fields: [hbl], references: [hbl])
+  locationId Int
+  location Location @relation(fields: [locationId], references: [id])
+  status ShipmentStatus
+  timestamp DateTime
+  description String
+  updateMethod UpdateMethod @default(SYSTEM)
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  @@index([hbl, locationId, status])
+  @@unique([hbl, locationId, status])
 }
 
 enum UpdateMethod {
-  SCANNED
-  MANUAL
   SYSTEM
   EXCEL_FILE
+  SCANNER
+  
 }
 
 
-
-
-
-model error_log {
-  id        Int   @id @default(autoincrement())
-  timestamp DateTime @default(now()) @db.Timestamptz()
-  level     String
-  message   String
-  stack     String?
-  path      String?
-  method    String?
+model Issues {
+  id Int @id @default(autoincrement())
+  hbl String
+  shipment Shipment @relation(fields: [hbl], references: [hbl])
+  description String
+  type IssueType
+  resolved Boolean @default(false)
+  resolvedBy User? @relation("IssueResolver", fields: [resolvedById], references: [id])
+  resolvedById String?  
+  resolvedAt DateTime?
+  comments IssueComments[]
+  imageUrl String?
+  userId String
+  user User @relation("IssueCreator", fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @updatedAt @db.Timestamptz()
 }
 
+model IssueComments {
+  id Int @id @default(autoincrement())
+  issueId Int
+  issue Issues @relation(fields: [issueId], references: [id])
+  comment String
+  imageUrl String?
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @updatedAt @db.Timestamptz()
+}
+
+enum IssueType {
+  DAMAGE
+  DELAY
+  INCORRECT_LABEL
+  LOST
+  OTHER
 
 
+}
+model Location {
+  id Int @id @default(autoincrement())
+  name String
+  description String?
+  events ShipmentEvent[]
+  shipments Shipment[]
+}
+enum ShipmentStatus {
+  CREATED
+  DISPATCH
+  IN_PORT
+  IN_CONTAINER
+  IN_TRANSIT
+  CUSTOMS_CLEARANCE
+  RECEIVED_AT_WAREHOUSE
+  READY_FOR_DELIVERY
+  RECEIVED_BY_MESSENGER
+  DELIVERED
+  LOST
+  RETURNED
+  CLAIMED
+  UNKNOWN
+  IN_PALLET
+
+}
+
+model Container {
+  id Int @id 
+  shipments Shipment[]
+  containerNumber String
+  status ContainerStatus
+}
+
+enum ContainerStatus {
+  IN_PORT
+  UNGROUPED
+ 
+}
 
 
 

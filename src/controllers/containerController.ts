@@ -4,6 +4,7 @@ import { createEvents, formatResult } from "../lib/_formatResult";
 import { prisma_db } from "../databases/prisma/prisma_db";
 import { UpdateMethod } from "@prisma/client";
 import { supabase_db } from "../databases/supabase/supabase_db";
+import { prisma } from "../databases/prisma/prisma-client";
 
 const getAll = async (req: Request, res: Response, next: NextFunction) => {
 	const containers = await mysql_db.containers.getAll();
@@ -11,7 +12,11 @@ const getAll = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const getById = async (req: Request, res: Response, next: NextFunction) => {
-	const container = await mysql_db.containers.getById(parseInt(req.params.id));
+	const container = await prisma.parcel.findMany({
+		where: {
+			containerId: parseInt(req.params.id),
+		},
+	});
 	res.json(container);
 };
 const getParcelsByContainerId = async (req: Request, res: Response, next: NextFunction) => {
@@ -36,8 +41,7 @@ const getParcelsByContainerId = async (req: Request, res: Response, next: NextFu
 			data: formattedParcels,
 		});
 	} catch (error) {
-		next(error);
-		res.status(500).json({ message: (error as Error).message });
+		return res.status(500).json({ message: (error as Error).message });
 	}
 };
 
@@ -86,7 +90,7 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			});
 		}
 
-		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, true);
+		const mysql_parcels = await mysql_db.containers.getParcelsByContainerId(containerId, false);
 
 		const { statusId, locationId } = CONTAINER_EVENTS[eventType];
 
@@ -103,7 +107,7 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			supabase_db.parcels.upsert(
 				mysql_parcels.map((el) => ({
 					hbl: el.hbl,
-					containerId: el.containerId,
+					containerId: containerId,
 					invoiceId: el.invoiceId,
 					agencyId: el.agencyId,
 				})),
@@ -115,7 +119,6 @@ const updateContainerStatus = async (req: Request, res: Response, next: NextFunc
 			message: "Container status updated",
 		});
 	} catch (error) {
-		next(error);
 		res.status(500).json({ message: (error as Error).message });
 	}
 };

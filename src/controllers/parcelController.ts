@@ -6,6 +6,8 @@ import { supabase_db } from "../databases/supabase/supabase_db";
 import { prisma_db } from "../databases/prisma/prisma_db";
 import { schemas } from "../shemas/shemas";
 import { createExcelEvents } from "../lib/_excel_helpers";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
 	try {
@@ -200,9 +202,16 @@ export const uploadExcelByHbl = async (req: Request, res: Response, next: NextFu
 	}
 };
 
+const upsertSchema = z.object({
+	hbls: z.array(z.string()),
+	locationId: z.number(),
+	statusId: z.number(),
+	updatedAt: z.string(),
+});
+
 export const upsertEvents = async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		const { hbls, locationId, statusId, updatedAt } = req.body;
+		const { hbls, locationId, statusId, updatedAt } = upsertSchema.parse(req.body);
 		const mysql_data = await mysql_db.parcels.getInHblArray(hbls, false);
 		const { userId } = req.user;
 
@@ -210,6 +219,30 @@ export const upsertEvents = async (req: Request, res: Response, next: NextFuncti
 		const parcelsUpserted = await supabase_db.parcels.upsert(mysql_data);
 		const eventsUpserted = await supabase_db.events.upsert(eventsToUpsert);
 		res.json(eventsUpserted);
+	} catch (error) {
+		next(error); 
+	}
+};
+
+export const createEvent = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		console.log("createEvent");
+		const { hbl, updatedAt, statusId, locationId } = req.body;
+		console.log(hbl);
+
+		const eventList = [
+			{
+				hbl,
+				updatedAt: new Date(updatedAt),
+				statusId: Number(statusId),
+				locationId: Number(locationId),
+				userId: "42cbb03e-9d73-47a6-857e-77527c02bdc2",
+				updateMethod: "SCANNED" as const,
+			},
+		];
+
+		const createdEvent = await supabase_db.events.upsert(eventList as []);
+		res.json(createdEvent);
 	} catch (error) {
 		next(error);
 	}

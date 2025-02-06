@@ -1,16 +1,16 @@
-import mysql_client from "./mysql_client";
-
+import mysql_client from "../../config/mysql-client";
 export const mysql_db = {
 	containers: {
 		getById: async (id: number) => {
 			try {
-				const query = `SELECT 
-					hbl,invoiceId,description from parcels
-					WHERE containerId = ?`;
-				const result = await mysql_client(query, [id]);
+				const [result] = await mysql_client(
+					"select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores WHERE codigo=?",
+					[id],
+				);
 				return result;
 			} catch (error) {
 				console.log(error);
+				throw error;
 			}
 		},
 		getAll: async (limit = 30) => {
@@ -147,49 +147,46 @@ export const mysql_db = {
 				const offset = (page - 1) * limit;
 				const trimmedSearchTerm = searchTerm ? searchTerm.trim() : "";
 
-				// Base query structure
+				// Add SQL_CALC_FOUND_ROWS to get accurate total count
 				const baseQuery = `
-					SELECT 
-						oe_emp_det.codigo_paquete AS hbl,
-						oe.cod_envio AS invoiceId,
-						oe_emp_det.tipo_producto AS parcelType,
-						oe_emp_det.descripcion AS description,
-						oe.cliente AS senderId,
-						CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
-						oe.destinatario AS receiverId,
-						c.cel AS senderMobile,
-						c.email AS senderEmail,
-						CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) AS receiver,
-						d.cel AS receiverMobile,
-				     	d.documento AS receiverCi,
-						cc.ciudad AS city,
-						ci.ciudad AS province,
-						oe.fecha AS invoiceDate,
-						oe_emp_det.estado AS currentLocation,
-						oe_emp_det.num_contenedor AS containerName,
-						co.fecha_update AS containerDate,
-						oe_emp_det.contenedor AS containerId,
-						d.ciudad AS cityId,
-						d.estado AS stateId,
-						oe_emp_det.pallet AS palletId,
-						despachos.codigo AS dispatchId,
-						despachos.fecha AS dispatchDate,
-						despachos.estado AS dispatchStatus,
-						p.fecha AS palletDate,
-						a.nombre AS agency,
-						a.id AS agencyId,
-						oe_emp_det.peso AS weight
-					FROM orden_envio_emp_det oe_emp_det
-						JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
-						JOIN agencias a ON oe_emp_det.agencia = a.id
-						LEFT JOIN destinatarios d ON d.codigo = oe.destinatario
-						LEFT JOIN pallets p ON oe_emp_det.pallet = p.codigo
-						LEFT JOIN contenedores co ON oe_emp_det.contenedor = co.codigo
-						LEFT JOIN clientes c ON oe.cliente = c.codigo
-						LEFT JOIN ciudades_cuba cc ON d.ciudad = cc.codigo
-						LEFT JOIN ciudades ci ON ci.id = d.estado
-						LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
-					WHERE`;
+					SELECT SQL_CALC_FOUND_ROWS 
+					oe_emp_det.codigo_paquete AS hbl,
+					oe.cod_envio AS invoiceId,
+					oe_emp_det.descripcion AS description,
+					oe.cliente AS senderId,
+					CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
+					oe.destinatario AS receiverId,
+					c.cel AS senderMobile,
+					c.email AS senderEmail,
+					CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) AS receiver,
+					d.cel AS receiverMobile,
+					d.documento AS receiverCi,
+					cc.ciudad AS city,
+					ci.ciudad AS state,
+					oe.fecha AS invoiceDate,
+					oe_emp_det.estado AS currentLocation,
+					oe_emp_det.num_contenedor AS containerName,
+					co.fecha_update AS containerDate,
+					oe_emp_det.contenedor AS containerId,
+					oe_emp_det.pallet AS palletId,
+					despachos.codigo AS dispatchId,
+					despachos.fecha AS dispatchDate,
+					despachos.estado AS dispatchStatus,
+					p.fecha AS palletDate,
+					a.nombre AS agency,
+					a.id AS agencyId,
+					oe_emp_det.peso AS weight
+				FROM orden_envio_emp_det oe_emp_det
+					JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
+					JOIN agencias a ON oe_emp_det.agencia = a.id
+					LEFT JOIN destinatarios d ON d.codigo = oe.destinatario
+					LEFT JOIN pallets p ON oe_emp_det.pallet = p.codigo
+					LEFT JOIN contenedores co ON oe_emp_det.contenedor = co.codigo
+					LEFT JOIN clientes c ON oe.cliente = c.codigo
+					LEFT JOIN ciudades_cuba cc ON d.ciudad = cc.codigo
+					LEFT JOIN ciudades ci ON ci.id = d.estado
+					LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
+				WHERE`;
 
 				let whereClause: string;
 				let queryParams: any[] = [];
@@ -220,22 +217,12 @@ export const mysql_db = {
 				const queryStr = `${baseQuery} ${whereClause} ORDER BY InvoiceId DESC LIMIT ? OFFSET ?`;
 				queryParams.push(limit, offset);
 
-				const [packagesFound, [{ total }]] = await Promise.all([
+				const [parcels, [{ total }]] = await Promise.all([
 					mysql_client(queryStr, queryParams),
 					mysql_client("SELECT FOUND_ROWS() as total"),
 				]);
 
-				const totalPages = Math.ceil(total / limit);
-
-				return {
-					packages: packagesFound,
-					meta: {
-						totalResults: total,
-						totalPages,
-						currentPage: page,
-						limit,
-					},
-				};
+				return parcels;
 			} catch (error) {
 				console.error(`Error occurred during package search with term "${searchTerm}":`, error);
 				throw new Error("An error occurred while searching for packages. Please try again later.");
@@ -250,7 +237,7 @@ export const mysql_db = {
 			const placeholders = hblArray.map(() => "?").join(",");
 			const query = verbose
 				? `select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
-						   sender,receiver,city,province,description,containerName,weight  FROM parcels WHERE hbl IN (${placeholders})`
+						   sender,receiver,city,province as state,description,containerName,weight  FROM parcels WHERE hbl IN (${placeholders})`
 				: `SELECT hbl,containerId,invoiceId,agencyId FROM parcels WHERE hbl IN (${placeholders})`;
 
 			const result = await mysql_client(query, hblArray);
@@ -289,21 +276,29 @@ export const mysql_db = {
 		},
 	},
 	stats: {
-		getStats: async () => {
+		getSalesStats: async () => {
 			const result = await mysql_client(
 				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
 			);
 			return result;
 		},
-		getDailySales: async () => {
+		getDailySalesByAgency: async (
+			agencyId: number = 2,
+			startDate: string = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+				.toISOString()
+				.split("T")[0],
+			endDate: string = new Date().toISOString().split("T")[0],
+		) => {
 			const result = await mysql_client(
-				"SELECT  fecha as date,  SUM(total+tarjeta_credito) AS sales FROM u373067935_cte.orden_envio WHERE orden_envio.agencia = 2 AND fecha BETWEEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND CURDATE() GROUP BY fecha ORDER BY fecha Asc;",
+				"SELECT  fecha as date,  SUM(total+tarjeta_credito) AS sales FROM u373067935_cte.orden_envio WHERE orden_envio.agencia = ? AND fecha BETWEEN ? AND ? GROUP BY fecha ORDER BY fecha Asc;",
+				[agencyId, startDate, endDate],
 			);
 			return result;
 		},
-		getEmployeeSales: async () => {
+		getEmployeeSales: async (agencyId: number = 2) => {
 			const result = await mysql_client(
-				"   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = 2 group by usuario ORDER BY sales DESC;",
+				"   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = ? group by usuario ORDER BY sales DESC;",
+				[agencyId],
 			);
 			return result;
 		},

@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import { User, Event, Prisma } from "@prisma/client";
 import prisma from "./prisma_client";
 import { mysql_db } from "../mysql/mysql_db";
 import { formatResult } from "../../lib/_formatResult";
@@ -55,6 +55,7 @@ export const prisma_db = {
 			}
 		},
 	}, */
+
 	events: {
 		getLatestEvents: async (hbl_array: string[]) => {
 			const event = await prisma.event.findMany({
@@ -85,6 +86,12 @@ export const prisma_db = {
 				currentLocation: event.location,
 			}));
 			return eventsWithLocationName;
+		},
+		create: async (event: Omit<Event, "id">) => {
+			const newEvent = await prisma.event.create({
+				data: event,
+			});
+			return newEvent;
 		},
 	},
 	issues: {
