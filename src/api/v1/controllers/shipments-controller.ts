@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
-import { toCamelCase } from "../../../lib/_toCamelCase";
+import { toCamelCase } from "../utils/_to_camel_case";
 import { formatSearchResult } from "../utils/format_search";
 import { ShipmentStatus } from "@prisma/client";
 

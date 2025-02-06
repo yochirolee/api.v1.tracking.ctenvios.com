@@ -3,7 +3,6 @@ import { mysql_db } from "../models/myslq/mysql_db";
 import { ContainerStatus, ShipmentStatus } from "@prisma/client";
 import supabase from "../config/supabase-client";
 import { prisma_db } from "../models/prisma/prisma_db";
-import { toCamelCase } from "../../../lib/_toCamelCase";
 
 export const containerController = {
 	getContainers: async (req: Request, res: Response) => {
