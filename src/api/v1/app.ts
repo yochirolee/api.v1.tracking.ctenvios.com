@@ -20,7 +20,6 @@ app.use(rateLimit({
 	max: 100, // Limit each IP to 100 requests per windowMs
 }));
 app.use(express.urlencoded({ extended: true }));
-console.log("app");
 
 // API Routes
 app.use("/api/v1", router);
