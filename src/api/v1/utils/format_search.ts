@@ -5,6 +5,7 @@ interface MySqlParcel {
 	containerName?: string;
 	palletDate?: string;
 	palletId?: string;
+	agency?: string;
 	dispatchDate?: string;
 	dispatchId?: string;
 	dispatchStatus?: number;
@@ -32,6 +33,7 @@ interface ParcelEvent {
 	locationId: number;
 	timestamp: Date;
 	location: string;
+
 	status: string;
 	statusDetails?: string;
 	updateMethod: string;
@@ -111,18 +113,26 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]) => {
 			return {
 				hbl: parcel.hbl,
 				invoiceId: parcel.invoiceId,
+				agency: parcel.agency,
+				invoiceDate: parcel.invoiceDate,
 				description: toCamelCase(parcel.description),
 				sender: toCamelCase(parcel.sender),
 				receiver: toCamelCase(parcel.receiver),
 				state: parcel.state,
 				city: parcel.city,
-				...lastEvent,
+				locationId: lastEvent?.locationId,
+				location: lastEvent?.location,
+				status: lastEvent?.status,
+				timestamp: lastEvent?.timestamp,
+				updateMethod: lastEvent?.updateMethod,
 			};
 		}
 
 		return {
 			hbl: parcel.hbl,
 			invoiceId: parcel.invoiceId,
+			agency: parcel.agency,
+			invoiceDate: parcel.invoiceDate,
 			description: toCamelCase(parcel.description),
 			sender: toCamelCase(parcel.sender),
 			receiver: toCamelCase(parcel.receiver),

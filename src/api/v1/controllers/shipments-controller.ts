@@ -110,9 +110,17 @@ export const shipmentsController = {
 					updateMethod: "SYSTEM",
 				});
 			}
+			if (search_on_mysql?.containerDate) {
+				events.push({
+					timestamp: search_on_mysql.containerDate,
+					locationId: 3,
+					status: ShipmentStatus.IN_CONTAINER,
+					description: "Container" + search_on_mysql.containerId,
+					updateMethod: "SYSTEM",
+				});
+			}
 			return events;
 		};
-		console.log(createMySqlEvents(search_on_mysql[0]));
 		const shipment_with_mysql = {
 			...search_on_mysql[0],
 			events: [...createMySqlEvents(search_on_mysql[0]), ...(shipment?.events || [])],
