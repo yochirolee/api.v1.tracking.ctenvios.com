@@ -31,34 +31,27 @@ model User {
   refreshToken String? //how to handle this?
   resolvedIssues Issues[] @relation("IssueResolver")
   users User[] @relation("UserCreator")
- 
+  carrierId Int?
+  carrier Carrier? @relation(fields: [carrierId], references: [id])
+
   @@index([email])
 }
 
 model Agency {
   id Int @id @default(autoincrement())
   name String
-  aliases String[]
-  contact String
-  phone String
-  email String
-  address String
-  parent Int
-  isActive Boolean @default(true)
-  warehouses Warehouse[]
   shipments Shipment[]
   users User[]
+  carriers Carrier[]
 }
 
-model Warehouse {
+model Carrier {
   id Int @id @default(autoincrement())
   name String
-  address String?
-  agencyId Int
-  agency Agency @relation(fields: [agencyId], references: [id]) 
+  shipments Shipment[]
+  users User[]
+  agencies Agency[]
 }
-
-
 
 
 
@@ -80,8 +73,9 @@ enum Roles {
 model Shipment {
   hbl String @unique @id
   invoiceId Int?
-  statusId Int
-  status Status @relation(fields: [statusId], references: [id])
+  locationId Int
+  location Location @relation(fields: [locationId], references: [id])
+  status ShipmentStatus @default(CREATED)
   container Container? @relation(fields: [containerId], references: [id])
   sender String?
   receiver String?
@@ -93,6 +87,8 @@ model Shipment {
   agency Agency? @relation(fields: [agencyId], references: [id])
   events ShipmentEvent[]
   issues Issues[]
+  carrierId Int?
+  carrier Carrier? @relation(fields: [carrierId], references: [id])
   updateMethod UpdateMethod @default(SYSTEM)
   userId String
   user User @relation(fields: [userId], references: [id])
@@ -105,14 +101,16 @@ model ShipmentEvent {
   id Int @id @default(autoincrement())
   hbl String
   shipment Shipment @relation(fields: [hbl], references: [hbl])
-  status Status @relation(fields: [statusId], references: [id])
-  statusId Int
-  timestamp DateTime  @db.Timestamptz()
+  locationId Int
+  location Location @relation(fields: [locationId], references: [id])
+  status ShipmentStatus
+  timestamp DateTime
+  description String
   updateMethod UpdateMethod @default(SYSTEM)
   userId String
   user User @relation(fields: [userId], references: [id])
-  @@index([hbl,statusId])
-  @@unique([hbl,statusId])
+  @@index([hbl, locationId, status])
+  @@unique([hbl, locationId, status])
 }
 
 enum UpdateMethod {
@@ -162,14 +160,31 @@ enum IssueType {
 
 
 }
-
-model Status {
+model Location {
   id Int @id @default(autoincrement())
-  code String @unique
   name String
-  description String
-  shipmentEvents ShipmentEvent[]
+  description String?
+  address String?
+  events ShipmentEvent[]
   shipments Shipment[]
+}
+enum ShipmentStatus {
+  CREATED
+  DISPATCH
+  IN_PORT
+  IN_CONTAINER
+  IN_TRANSIT
+  CUSTOMS_CLEARANCE
+  RECEIVED_AT_WAREHOUSE
+  READY_FOR_DELIVERY
+  RECEIVED_BY_MESSENGER
+  DELIVERED
+  LOST
+  RETURNED
+  CLAIMED
+  UNKNOWN
+  IN_PALLET
+
 }
 
 model Container {

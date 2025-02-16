@@ -1,4 +1,4 @@
-import { Shipment, ShipmentStatus, UpdateMethod } from "@prisma/client";
+import { Shipment, Status, UpdateMethod } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import XLSX from "xlsx";
 import supabase from "../config/supabase-client";
@@ -25,8 +25,8 @@ export const excelController = {
 
 			const workbook = XLSX.read(file.buffer, { type: "buffer" });
 			const allSheetsData = await processAllSheets(workbook, userId);
-
-			res.status(200).json({ ...allSheetsData });
+			
+			res.status(200).json(allSheetsData );
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({
@@ -59,14 +59,13 @@ const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: 
 	const uniqueHbls = [...new Set(filteredData.map((row) => row.hbl))];
 	const mysql_data = await mysql_db.parcels.getInHblArray(uniqueHbls);
 
-	const upsertData = createUpsertData(filteredData, mysql_data, userId);
-	const { shipments, events } = await upsertShipmentsAndEvents(upsertData);
+	//const upsertData = createUpsertData(filteredData, mysql_data, userId);
+	//const { shipments, events } = await upsertShipmentsAndEvents(upsertData);
 
 	return {
 		[sheetName]: {
 			sheetName,
-			shipments: shipments?.length,
-			events: events?.length,
+			shipments: rawData,
 			error: null,
 			eventsError: null,
 		},
@@ -83,36 +82,38 @@ const processRawData = (rawData: ExcelRow[]) => {
 };
 
 const createUpsertData = (filteredData: any[], mysql_data: any[], userId: string) => {
-	return filteredData
-		.map((row) => {
-			const matchingData = mysql_data.find((data) => row.hbl === data.hbl);
-			if (!matchingData) return null;
+	// Create a map to store the latest entry for each HBL
+	const hblMap = new Map();
 
-			return {
+	filteredData.forEach((row) => {
+		const matchingData = mysql_data.find((data) => row.hbl === data.hbl);
+		if (!matchingData) return;
+
+		const timestamp = row.F_ENTREGA || row.F_SALIDA || row.F_AFORO || new Date();
+		const existingEntry = hblMap.get(matchingData.hbl);
+
+		// Only update the map if this entry is newer or there's no existing entry
+		if (!existingEntry || timestamp > existingEntry.timestamp) {
+			hblMap.set(matchingData.hbl, {
 				hbl: matchingData.hbl,
-				timestamp: row.F_ENTREGA || row.F_SALIDA || row.F_AFORO || new Date(),
-				locationId: getLocationId(row),
-				status: getShipmentStatus(row),
+				timestamp: timestamp,
+				statusId: getShipmentStatus(row),
 				userId: userId,
 				updateMethod: UpdateMethod.EXCEL_FILE,
 				invoiceId: matchingData.invoiceId,
-			};
-		})
-		.filter(Boolean);
-};
+			});
+		}
+	});
 
-const getLocationId = (row: any) => {
-	if (row.F_ENTREGA) return 7;
-	if (row.F_SALIDA) return 6;
-	if (row.F_AFORO) return 5;
-	return 1;
+	// Convert map values back to array
+	return Array.from(hblMap.values());
 };
 
 const getShipmentStatus = (row: any) => {
-	if (row.F_ENTREGA) return ShipmentStatus.DELIVERED;
-	if (row.F_SALIDA) return ShipmentStatus.IN_TRANSIT;
-	if (row.F_AFORO) return ShipmentStatus.READY_FOR_DELIVERY;
-	return ShipmentStatus.UNKNOWN;
+	if (row.F_ENTREGA) return 11;
+	if (row.F_SALIDA) return 10;
+	if (row.F_AFORO) return 9;
+	return 1;
 };
 
 const upsertShipmentsAndEvents = async (upsertData: any[]) => {
@@ -136,8 +137,7 @@ const upsertShipmentsAndEvents = async (upsertData: any[]) => {
 
 const createEventData = (row: any) => ({
 	hbl: row.hbl,
-	locationId: row.locationId,
-	status: row.status,
+	statusId: row.statusId,
 	timestamp: row.timestamp,
 	userId: row.userId,
 	updateMethod: row.updateMethod,

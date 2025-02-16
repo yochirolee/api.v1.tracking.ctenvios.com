@@ -6,5 +6,5 @@ const containerRoutes = Router();
 
 containerRoutes.post("/toPort/:id", authMiddleware, containerController.containerToPort);
 containerRoutes.get("/", authMiddleware, containerController.getContainers);
-
+containerRoutes.get("/:id", containerController.getShipmentsByContainerId);
 export default containerRoutes;

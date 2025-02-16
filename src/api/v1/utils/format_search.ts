@@ -39,6 +39,24 @@ interface ParcelEvent {
 	updateMethod: string;
 }
 
+// Add return type interface
+interface FormattedParcel {
+	hbl: string;
+	invoiceId: string;
+	agency?: string;
+	invoiceDate?: string;
+	description: string;
+	sender: string;
+	receiver: string;
+	state: string;
+	city: string;
+	locationId?: number;
+	location?: string;
+	status?: string;
+	timestamp?: Date;
+	updateMethod?: string;
+}
+
 const getMySqlParcelLastEvent = (mysqlParcel: MySqlParcel | null): ParcelEvent | null => {
 	if (!mysqlParcel) return null;
 
@@ -93,7 +111,7 @@ const getMySqlParcelLastEvent = (mysqlParcel: MySqlParcel | null): ParcelEvent |
 	return null;
 };
 
-const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]) => {
+const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): FormattedParcel[] => {
 	// Create a Map for O(1) shipment lookups
 	const shipmentMap = new Map(shipments.map((shipment) => [shipment.hbl, shipment]));
 
@@ -106,20 +124,25 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]) => {
 	});
 
 	return parcels.map((parcel) => {
+		// Extract common fields
+		const baseParcel = {
+			hbl: parcel.hbl,
+			invoiceId: parcel.invoiceId,
+			agency: parcel.agency,
+			invoiceDate: parcel.invoiceDate,
+			description: toCamelCase(parcel.description),
+			sender: toCamelCase(parcel.sender),
+			receiver: toCamelCase(parcel.receiver),
+			state: parcel.state,
+			city: parcel.city,
+		};
+
 		const shipment = shipmentMap.get(parcel.hbl);
 
 		if (!shipment) {
 			const lastEvent = lastEventMap.get(parcel.hbl);
 			return {
-				hbl: parcel.hbl,
-				invoiceId: parcel.invoiceId,
-				agency: parcel.agency,
-				invoiceDate: parcel.invoiceDate,
-				description: toCamelCase(parcel.description),
-				sender: toCamelCase(parcel.sender),
-				receiver: toCamelCase(parcel.receiver),
-				state: parcel.state,
-				city: parcel.city,
+				...baseParcel,
 				locationId: lastEvent?.locationId,
 				location: lastEvent?.location,
 				status: lastEvent?.status,
@@ -129,18 +152,10 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]) => {
 		}
 
 		return {
-			hbl: parcel.hbl,
-			invoiceId: parcel.invoiceId,
-			agency: parcel.agency,
-			invoiceDate: parcel.invoiceDate,
-			description: toCamelCase(parcel.description),
-			sender: toCamelCase(parcel.sender),
-			receiver: toCamelCase(parcel.receiver),
+			...baseParcel,
 			locationId: shipment.locationId,
 			location: shipment.location?.name,
 			status: shipment.status,
-			state: parcel.state,
-			city: parcel.city,
 			timestamp: shipment.timestamp,
 			updateMethod: shipment.updateMethod,
 		};

@@ -1,6 +1,5 @@
-import { Container, Issues, ShipmentStatus, User } from "@prisma/client";
+import { Container, Issues, Shipment, User } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
-import { mysql_db } from "../myslq/mysql_db";
 
 export const prisma_db = {
 	users: {
@@ -57,7 +56,13 @@ export const prisma_db = {
 		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
 			const shipments = await prisma.shipment.findMany({
 				include: {
-					location: true,
+					status: true,
+					agency: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 				},
 				orderBy: {
 					timestamp: "desc",
@@ -83,7 +88,13 @@ export const prisma_db = {
 					],
 				},
 				include: {
-					location: true,
+					status: true,
+					agency: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 				},
 				orderBy: {
 					timestamp: "desc",
@@ -98,52 +109,79 @@ export const prisma_db = {
 			const shipment = await prisma.shipment.findUnique({
 				where: { hbl },
 				include: {
-					location: true,
-					events: true,
+					status: true,
+					events: {
+						include: { status: true },
+					},
 				},
 			});
+
 			return shipment;
 		},
 		getShipmentsByHbls: async (hbls: string[]) => {
 			const shipments = await prisma.shipment.findMany({
 				where: { hbl: { in: hbls } },
 				include: {
-					location: true,
 					events: true,
 				},
 			});
 			return shipments;
 		},
-		//how to get the stats for the shipments?
-		//we need to get the shipments by status and count them
-		//we need to get the shipments by location and count them
-		getShipmentsStats: async () => {
-			const shipments = await prisma.shipment.findMany({
-				include: {
-					location: true,
-				},
+		//tx to update a shipment and the events
+		updateShipment: async (hbl: string, data: Partial<Shipment>) => {
+			const shipment = await prisma.$transaction(async (tx) => {
+				const shipment = await tx.shipment.update({
+					where: { hbl },
+					data: {
+						statusId: data.statusId,
+						userId: data.userId,
+						updateMethod: data.updateMethod,
+					},
+				});
+				const events = await tx.shipmentEvent.upsert({
+					where: { hbl_statusId: { hbl, statusId: shipment.statusId } },
+					update: {
+						hbl: shipment.hbl,
+						timestamp: shipment.timestamp,
+						statusId: shipment.statusId,
+						userId: shipment.userId,
+						updateMethod: shipment.updateMethod,
+					},
+					create: {
+						hbl: shipment.hbl,
+						timestamp: shipment.timestamp,
+						statusId: shipment.statusId,
+						userId: shipment.userId,
+						updateMethod: shipment.updateMethod,
+					},
+				});
+				return shipment;
 			});
-
-			//by location and status
-			
-			const stats = shipments.reduce((acc: Record<string, number>, shipment) => {
-				acc[shipment.location.name] = (acc[shipment.location.name] || 0) + 1;
-				return acc;
-			}, {} as Record<string, number>);
-			return stats;
+			return shipment;
+		},
+		updateManyShipments: async (data: Partial<Shipment>[]) => {
+			const shipments = await prisma.shipment.updateMany({ data });
+			return shipments;
 		},
 	},
 	containers: {
-		getContainers: async () => {
-			const containers = await prisma.container.findMany({
+		getContainerById: async (id: number) => {
+			const container = await prisma.container.findUnique({
+				where: { id },
 				include: {
-					shipments: true,
+					shipments: {
+						include: {
+							status: true,
+							agency: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
 				},
 			});
-			return containers;
-		},
-		getContainerById: async (id: number) => {
-			const container = await prisma.container.findUnique({ where: { id } });
 			return container;
 		},
 		upsertContainer: async (data: Container) => {
@@ -153,6 +191,20 @@ export const prisma_db = {
 				create: data,
 			});
 			return container;
+		},
+		deleteContainer: async (id: number) => {
+			const container = await prisma.container.delete({ where: { id } });
+			return container;
+		},
+	},
+	agencies: {
+		getAgencies: async () => {
+			const agencies = await prisma.agency.findMany();
+			return agencies;
+		},
+		getAgencyById: async (id: number) => {
+			const agency = await prisma.agency.findUnique({ where: { id } });
+			return agency;
 		},
 	},
 	issues: {

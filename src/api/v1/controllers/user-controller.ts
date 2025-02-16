@@ -115,6 +115,7 @@ export const user_controller = {
 				agencyId,
 				password: hashedPassword,
 				createdById: userId,
+				phone: null,
 			});
 			return res.json(user);
 		} catch (error: any) {

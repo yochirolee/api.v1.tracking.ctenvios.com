@@ -12,6 +12,9 @@ shipmentsRoutes.get("/search", authMiddleware, shipmentsController.searchShipmen
 
 shipmentsRoutes.get("/hbl/:hbl", authMiddleware, shipmentsController.getShipmentByHbl);
 
+//upsert shipments
+shipmentsRoutes.put("/update", authMiddleware, shipmentsController.updateShipment);
+
 /* //create tracking or update if exists
 shipmentsRoutes.post("/", async (req: Request, res: Response) => {
 	try {

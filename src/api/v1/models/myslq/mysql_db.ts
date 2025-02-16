@@ -236,8 +236,7 @@ export const mysql_db = {
 
 			const placeholders = hblArray.map(() => "?").join(",");
 			const query = verbose
-				? `select hbl,agency,agencyId,invoiceId,containerDate,invoiceDate,palletId,palletDate,dispatchDate,dispatchId, 
-						   sender,receiver,city,province as state,description,containerName,weight  FROM parcels WHERE hbl IN (${placeholders})`
+				? `select *  FROM parcels WHERE hbl IN (${placeholders})`
 				: `SELECT hbl,containerId,invoiceId,agencyId FROM parcels WHERE hbl IN (${placeholders})`;
 
 			const result = await mysql_client(query, hblArray);
