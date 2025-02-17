@@ -1,4 +1,4 @@
-import { Container, Issues, Shipment, User } from "@prisma/client";
+import { Agency, Container, Issues, Shipment, User } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
 export const prisma_db = {
@@ -15,7 +15,15 @@ export const prisma_db = {
 					isActive: true,
 					createdAt: true,
 					updatedAt: true,
+
+					agency: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 				},
+
 				skip: (page - 1) * limit,
 				take: limit,
 			});
@@ -113,6 +121,12 @@ export const prisma_db = {
 					events: {
 						include: { status: true },
 					},
+					user: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 				},
 			});
 
@@ -165,7 +179,7 @@ export const prisma_db = {
 		},
 	},
 	containers: {
-		getContainerById: async (id: number) => {
+		getContainerWithShipmentsById: async (id: number) => {
 			const container = await prisma.container.findUnique({
 				where: { id },
 				include: {
@@ -183,6 +197,10 @@ export const prisma_db = {
 				},
 			});
 			return container;
+		},
+		getContainers: async () => {
+			const containers = await prisma.container.findMany();
+			return containers;
 		},
 		upsertContainer: async (data: Container) => {
 			const container = await prisma.container.upsert({
@@ -204,6 +222,10 @@ export const prisma_db = {
 		},
 		getAgencyById: async (id: number) => {
 			const agency = await prisma.agency.findUnique({ where: { id } });
+			return agency;
+		},
+		createAgency: async (data: Agency) => {
+			const agency = await prisma.agency.create({ data });
 			return agency;
 		},
 	},

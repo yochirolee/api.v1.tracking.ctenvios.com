@@ -1,72 +1,127 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { mysql_db } from "../models/myslq/mysql_db";
-import { ContainerStatus, Shipment, Status } from "@prisma/client";
+import { ContainerStatus, Shipment, Status, UpdateMethod } from "@prisma/client";
 import supabase from "../config/supabase-client";
 import { prisma_db } from "../models/prisma/prisma_db";
 import { supabase_db } from "../models/supabase/supabase_db";
 import { formatSearchResult } from "../utils/format_search";
 import { toCamelCase } from "../utils/_to_camel_case";
-import Joi from "joi";
 import { z } from "zod";
 
 const containerToPortSchema = z.object({
 	containerId: z.number(),
 	timestamp: z.string(),
-	userId: z.number(),
+	userId: z.string(),
 });
+
+const updateContainerStatusSchema = z.object({
+	containerId: z.number(),
+	timestamp: z.string(),
+	userId: z.string(),
+	statusId: z.number(),
+});
+interface ParcelData {
+	hbl: string;
+	invoiceId?: number;
+	receiver: string;
+	sender: string;
+	agencyId: number;
+	agencyName: string;
+	description: string;
+	province: string;
+	city: string;
+}
+
+interface Agency {
+	id: number;
+	name: string;
+}
 
 export const containerController = {
 	getContainers: async (req: Request, res: Response) => {
-		const containers = await mysql_db.containers.getAll();
-		res.json(containers);
+		const [my_sql_containers, prisma_containers] = await Promise.all([
+			mysql_db.containers.getAll(),
+			prisma_db.containers.getContainers(),
+		]);
+
+		const joinedContainers = my_sql_containers.map((container) => {
+			const prismaContainer = prisma_containers.find((c) => c.id === container.id);
+			if (prismaContainer) {
+				return { ...container, ...prismaContainer };
+			}
+			return container;
+		});
+
+		res.json(joinedContainers);
 	},
 	//container to port
 
 	containerToPort: async (req: Request, res: Response) => {
 		try {
-			const containerId = parseInt(req.params.id);
-			const timestamp = req.body.timestamp;
-			const userId = req.user.userId;
+			// Input validation using zod schema
+			const validatedInput = containerToPortSchema.safeParse({
+				containerId: parseInt(req.params.id),
+				timestamp: req.body.timestamp,
+				userId: req.user.userId,
+			});
 
-			if (!containerId || !timestamp || !userId) {
-				return res.status(400).json({ message: "Container ID, timestamp and userId are required" });
+			if (!validatedInput.success) {
+				return res.status(400).json({
+					message: "Invalid input data",
+					errors: validatedInput.error.errors,
+				});
 			}
-			const containerData = await mysql_db.containers.getById(containerId);
 
-			// Parallel execution of container operations
-			const [createContainer, container] = await Promise.all([
-				prisma_db.containers.upsertContainer({
-					id: containerId,
-					containerNumber: containerData.name,
-					status: ContainerStatus.IN_PORT,
-					is_active: true,
-				}),
+			const { containerId, timestamp, userId } = validatedInput.data;
+
+			// Fetch container data and validate existence
+			const containerData = await mysql_db.containers.getById(containerId);
+			if (!containerData) {
+				return res.status(404).json({ message: "Container not found" });
+			}
+
+			// Parallel execution with proper error handling
+			const [container, existingAgencies] = await Promise.all([
 				mysql_db.containers.getParcelsByContainerId(containerId, true),
-			]);
+				prisma_db.agencies.getAgencies(),
+			]).catch((error) => {
+				throw new Error(`Failed to fetch container data: ${error.message}`);
+			});
 
 			if (!container.length) {
 				return res.status(404).json({ message: "No parcels found for this container" });
 			}
 
-			const agenciesInContainer = container.map((parcel) => ({
-				id: parcel.agencyId,
-				name: parcel.agencyName,
-			}));
-			//check if the agency is already in the database
-			const existingAgencies = await prisma_db.agencies.getAgencies();
-			//unique agencies
-			const uniqueAgencies = [...new Set(agenciesInContainer)];
-			const newAgencies = uniqueAgencies.filter(
-				(agency) => !existingAgencies.some((existingAgency) => existingAgency.id === agency.id),
+			// Create container in Prisma
+			const createContainer = await prisma_db.containers.upsertContainer({
+				id: containerId,
+				containerNumber: containerData.name,
+				status: ContainerStatus.IN_PORT,
+				isActive: true,
+			});
+
+			// Process agencies
+			const agenciesInContainer = new Map<number, Agency>();
+			container.forEach((parcel: ParcelData) => {
+				agenciesInContainer.set(parcel.agencyId, {
+					id: parcel.agencyId,
+					name: parcel.agencyName,
+				});
+			});
+
+			const newAgencies = Array.from(agenciesInContainer.values()).filter(
+				(agency) => !existingAgencies.some((existing) => existing.id === agency.id),
 			);
-			//create new agencies
+
 			if (newAgencies.length) {
-				return res
-					.status(400)
-					.json({ agencies: newAgencies, message: "New Agency found in container" });
+				return res.status(400).json({
+					agencies: newAgencies,
+					message: "New Agency found in container",
+				});
 			}
-			// Perform shipment upsert
-			const shipmentsInContainer = container.map((parcel) => ({
+
+			// Prepare shipment data
+			const shipmentsInContainer = container.map((parcel: any) => ({
 				hbl: parcel.hbl,
 				invoiceId: parcel?.invoiceId,
 				containerId: createContainer.id,
@@ -75,29 +130,32 @@ export const containerController = {
 				agencyId: parcel.agencyId,
 				description: toCamelCase(parcel.description),
 				statusId: 4,
-				userId: userId,
-				timestamp: timestamp,
+				userId: userId.toString(),
+				timestamp: new Date(timestamp),
 				state: parcel.province,
 				city: parcel.city,
+				updateMethod: UpdateMethod.SYSTEM,
 			}));
-			const { data, error } = await supabase_db.shipments.upsert(
+
+			// Transaction for shipments and events
+			const { data: shipments, error: shipmentError } = await supabase_db.shipments.upsert(
 				shipmentsInContainer as Shipment[],
 			);
 
-			if (error) {
+			if (shipmentError) {
 				await prisma_db.containers.deleteContainer(containerId);
-				throw new Error(`Error upserting shipments: ${error.message}`);
+				throw new Error(`Error upserting shipments: ${shipmentError.message}`);
 			}
 
-			if (!data) {
+			if (!shipments?.length) {
 				return res.status(404).json({ message: "No shipments were created or updated" });
 			}
 
-			const shipmentsEvents = data.map((shipment) => ({
+			const shipmentsEvents = shipments.map((shipment) => ({
 				hbl: shipment.hbl,
 				statusId: shipment.statusId,
 				userId: shipment.userId,
-				timestamp: timestamp,
+				timestamp: new Date(timestamp).toISOString(),
 			}));
 
 			const { data: eventsData, error: eventsError } = await supabase
@@ -107,11 +165,15 @@ export const containerController = {
 				});
 
 			if (eventsError) {
-				
 				throw new Error(`Error upserting shipment events: ${eventsError.message}`);
 			}
 
-			return res.json(eventsData);
+			return res.json({
+				success: true,
+				container: createContainer,
+				shipments,
+				events: eventsData,
+			});
 		} catch (error) {
 			console.error("containerToPort error:", error);
 			return res.status(500).json({
@@ -120,9 +182,79 @@ export const containerController = {
 			});
 		}
 	},
+
+	updateContainerStatus: async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const validatedInput = updateContainerStatusSchema.safeParse({
+				containerId: parseInt(req.params.id),
+				timestamp: req.body.timestamp,
+				userId: req.user.userId,
+				statusId: req.body.statusId,
+			});
+
+			if (!validatedInput.success) {
+				return res.status(400).json({
+					message: "Invalid input data",
+					errors: validatedInput.error.errors,
+				});
+			}
+
+			const { containerId, timestamp, userId, statusId } = validatedInput.data;
+			console.log(containerId, timestamp, userId, statusId);	
+
+			const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
+			if (!container) {
+				return res.status(404).json({ message: "Container not found" });
+			}
+
+			const shipments = container?.shipments;
+			if (!shipments) {
+				return res.status(404).json({ message: "No shipments found for this container" });
+			}
+
+			//create shipment for update the staus
+			const shipmentsForUpdate = shipments.map((shipment) => ({
+				hbl: shipment.hbl,
+				statusId: statusId,
+				timestamp: new Date(timestamp).toISOString(),
+				userId: userId,
+			}));
+			const { data: shipmentsData, error: shipmentsError } = await supabase
+				.from("Shipment")
+				.upsert(shipmentsForUpdate);
+
+			if (shipmentsError) {
+				throw new Error(`Error upserting shipment events: ${shipmentsError.message}`);
+			}
+
+			const shipmentEvents = shipmentsData.map((shipment) => ({
+				hbl: shipment.hbl,
+				statusId: shipment.statusId,
+				userId: shipment.userId,
+				timestamp: new Date(timestamp).toISOString(),
+			}));
+
+			const { data: eventsData, error: eventsError } = await supabase
+				.from("ShipmentEvent")
+				.upsert(shipmentEvents, {
+					onConflict: "hbl,statusId",
+				});
+
+			if (eventsError) {
+				throw new Error(`Error upserting shipment events: ${eventsError.message}`);
+			}
+
+			res.json({
+				message: "Container status updated",
+			});
+		} catch (error) {
+			res.status(500).json({ message: (error as Error).message });
+		}
+	},
+
 	getShipmentsByContainerId: async (req: Request, res: Response) => {
 		const containerId = parseInt(req.params.id);
-		const shipments = await prisma_db.containers.getContainerById(containerId);
+		const shipments = await prisma_db.containers.getContainerWithShipmentsById(containerId);
 		res.json(shipments);
 	},
 };

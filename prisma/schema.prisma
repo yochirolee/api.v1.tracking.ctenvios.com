@@ -177,7 +177,7 @@ model Container {
   shipments Shipment[]
   containerNumber String
   status ContainerStatus @default(IN_PORT)
-  is_active Boolean @default(false)
+  isActive Boolean @default(false)
 }
 
 enum ContainerStatus {

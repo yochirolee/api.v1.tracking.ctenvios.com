@@ -4,10 +4,14 @@ import { mysql_db } from "../models/myslq/mysql_db";
 import { supabase_db } from "../models/supabase/supabase_db";
 import { formatSearchResult } from "../utils/format_search";
 import { z } from "zod";
+import { toCamelCase } from "../utils/_to_camel_case";
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
 		try {
+			//if user is admin, get all shipments
+			//if user is not admin, get shipments by agencyId
+			//implementation missing
 			const shipments = await prisma_db.shipments.getShipments({
 				limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
@@ -32,54 +36,69 @@ export const shipmentsController = {
 		const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
 		const shipments = formatSearchResult(existingShipments, search_on_mysql);
 */
+
 		const shipments = await prisma_db.shipments.searchShipments(search);
 		res.json(shipments);
 	},
 	getShipmentByHbl: async (req: Request, res: Response) => {
-		/* const hbl = req.params.hbl;
+		const hbl = req.params.hbl;
+		console.log(hbl);
 		const [shipment, search_on_mysql] = await Promise.all([
 			prisma_db.shipments.getShipmentByHbl(hbl),
 			mysql_db.parcels.getInHblArray([hbl], true),
 		]);
+
 		const createMySqlEvents = (search_on_mysql: any) => {
 			const events = [];
 			if (search_on_mysql?.invoiceDate) {
 				events.push({
 					timestamp: search_on_mysql.invoiceDate,
-					status: Status.CREATED,
-					locationId: 1,
-					location: "Almacen",
-					description: "Invoice date",
+					status: {
+						id: 1,
+						name: "Created",
+						code: "CREATED",
+						description: "Shipment created in Agency",
+					},
 					updateMethod: "SYSTEM",
 				});
 			}
 			if (search_on_mysql?.dispatchDate) {
 				events.push({
 					timestamp: search_on_mysql.dispatchDate,
-					locationId: 2,
-					location: "Almacen",
-					status: Status.DISPATCH,
-					description: "Dispatch" + search_on_mysql.dispatchId,
+
+					status: {
+						id: 2,
+						name: "Dispatched",
+						code: "IN_WAREHOUSE",
+						description: "Dispatched " + search_on_mysql.dispatchId,
+					},
 					updateMethod: "SYSTEM",
 				});
 			}
 			if (search_on_mysql?.palletDate) {
 				events.push({
 					timestamp: search_on_mysql.palletDate,
-					locationId: 2,
-					location: "Almacen",
-					status: Status.IN_PALLET,
-					description: "Pallet" + search_on_mysql.palletId,
+
+					status: {
+						id: 2,
+						description: "In Warehouse in Pallet " + search_on_mysql.palletId,
+						code: "IN_WAREHOUSE",
+						name: "In Warehouse in Pallet",
+					},
 					updateMethod: "SYSTEM",
 				});
 			}
 			if (search_on_mysql?.containerDate) {
 				events.push({
 					timestamp: search_on_mysql.containerDate,
-					locationId: 3,
+
 					location: "Contenedor",
-					status: Status.IN_CONTAINER,
-					description: "Container" + search_on_mysql.containerId,
+					status: {
+						id: 3,
+						name: "In Container",
+						code: "IN_CONTAINER",
+						description: "Loaded in Container " + search_on_mysql.containerId,
+					},
 					updateMethod: "SYSTEM",
 				});
 			}
@@ -120,10 +139,8 @@ export const shipmentsController = {
 				city: mslq_parcel.city,
 			},
 			events: [...createMySqlEvents(mslq_parcel), ...(shipment?.events || [])],
-		}; */
-		const hbl = req.params.hbl;
-		const shipment = await prisma_db.shipments.getShipmentByHbl(hbl);
-		res.json(shipment);
+		};
+		res.json(shipment_with_mysql);
 	},
 	updateShipment: async (req: Request, res: Response) => {
 		try {
