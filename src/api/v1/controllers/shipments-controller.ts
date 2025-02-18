@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
 import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
-import { supabase_db } from "../models/supabase/supabase_db";
-import { formatSearchResult } from "../utils/format_search";
-import { z } from "zod";
 import { toCamelCase } from "../utils/_to_camel_case";
+import { generateMySqlEvents } from "../utils/_generate_sql_events";
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
@@ -42,69 +40,16 @@ export const shipmentsController = {
 	},
 	getShipmentByHbl: async (req: Request, res: Response) => {
 		const hbl = req.params.hbl;
-		console.log(hbl);
+		if (!hbl) {
+			return res.status(400).json({ message: "HBL is required" });
+		}
 		const [shipment, search_on_mysql] = await Promise.all([
 			prisma_db.shipments.getShipmentByHbl(hbl),
 			mysql_db.parcels.getInHblArray([hbl], true),
 		]);
 
-		const createMySqlEvents = (search_on_mysql: any) => {
-			const events = [];
-			if (search_on_mysql?.invoiceDate) {
-				events.push({
-					timestamp: search_on_mysql.invoiceDate,
-					status: {
-						id: 1,
-						name: "Created",
-						code: "CREATED",
-						description: "Shipment created in Agency",
-					},
-					updateMethod: "SYSTEM",
-				});
-			}
-			if (search_on_mysql?.dispatchDate) {
-				events.push({
-					timestamp: search_on_mysql.dispatchDate,
-
-					status: {
-						id: 2,
-						name: "Dispatched",
-						code: "IN_WAREHOUSE",
-						description: "Dispatched " + search_on_mysql.dispatchId,
-					},
-					updateMethod: "SYSTEM",
-				});
-			}
-			if (search_on_mysql?.palletDate) {
-				events.push({
-					timestamp: search_on_mysql.palletDate,
-
-					status: {
-						id: 2,
-						description: "In Warehouse in Pallet " + search_on_mysql.palletId,
-						code: "IN_WAREHOUSE",
-						name: "In Warehouse in Pallet",
-					},
-					updateMethod: "SYSTEM",
-				});
-			}
-			if (search_on_mysql?.containerDate) {
-				events.push({
-					timestamp: search_on_mysql.containerDate,
-
-					location: "Contenedor",
-					status: {
-						id: 3,
-						name: "In Container",
-						code: "IN_CONTAINER",
-						description: "Loaded in Container " + search_on_mysql.containerId,
-					},
-					updateMethod: "SYSTEM",
-				});
-			}
-			return events;
-		};
 		const mslq_parcel = search_on_mysql[0];
+		const mysql_events = generateMySqlEvents(mslq_parcel);
 		const shippingAddress = toCamelCase(
 			[
 				toCamelCase(mslq_parcel.cll),
@@ -138,9 +83,24 @@ export const shipmentsController = {
 				state: mslq_parcel.province,
 				city: mslq_parcel.city,
 			},
-			events: [...createMySqlEvents(mslq_parcel), ...(shipment?.events || [])],
+			events: [...mysql_events, ...(shipment?.events || [])],
 		};
 		res.json(shipment_with_mysql);
+	},
+	scanShipment: async (req: Request, res: Response) => {
+		try {
+			const hbl = req.params.hbl;
+			const shipment = await prisma_db.shipments.scanShipment(hbl);
+			// i need the invoiceId and then all the shipments with that invoiceId
+			const invoiceId = shipment?.invoiceId;
+			if (!invoiceId) {
+				return res.status(404).json({ message: "Invoice ID not found" });
+			}
+			const result = await prisma_db.shipments.getShipmentsByInvoiceId(invoiceId);
+		} catch (error) {
+			console.error(error);
+			res.status(500).json({ message: "Internal server error" });
+		}
 	},
 	updateShipment: async (req: Request, res: Response) => {
 		try {
@@ -153,6 +113,22 @@ export const shipmentsController = {
 			});
 
 			res.json(shipment);
+		} catch (error) {
+			console.error(error);
+			res.status(500).json({ message: "Internal server error" });
+		}
+	},
+	updateManyShipments: async (req: Request, res: Response) => {
+		try {
+			const { hbls, statusId, updateMethod, timestamp } = req.body;
+			const userId = req.user?.id;
+			const shipments = await prisma_db.shipments.updateManyShipments(hbls, {
+				statusId,
+				updateMethod,
+				userId,
+				timestamp,
+			});
+			res.json(shipments);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });

@@ -25,7 +25,7 @@ export const excelController = {
 
 			const workbook = XLSX.read(file.buffer, { type: "buffer" });
 			const allSheetsData = await processAllSheets(workbook, userId);
-			
+			console.log(allSheetsData);
 			res.status(200).json(allSheetsData );
 		} catch (error) {
 			console.error(error);

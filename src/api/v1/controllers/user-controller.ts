@@ -79,14 +79,21 @@ export const user_controller = {
 			//update last login
 			await prisma_db.users.updateUser(user.id, { lastLogin: new Date() });
 			const token = jwt.sign(
-				{ userId: user.id, role: user.role, agencyId: user.agencyId, email: user.email },
+				{
+					userId: user.id,
+					role: user.role,
+					agencyId: user.agencyId,
+					email: user.email,
+				},
 				process.env.JWT_SECRET as string,
 				{
-					expiresIn: "1h",
+					expiresIn: "4h",
 				},
 			);
+			console.log(token);
 			res.json({ token });
 		} catch (error: any) {
+			console.log(error);
 			return res.status(500).json({ error: error.message });
 		}
 	},

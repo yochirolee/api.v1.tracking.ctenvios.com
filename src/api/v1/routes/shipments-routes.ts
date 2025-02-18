@@ -14,6 +14,7 @@ shipmentsRoutes.get("/hbl/:hbl", authMiddleware, shipmentsController.getShipment
 
 //upsert shipments
 shipmentsRoutes.put("/update", authMiddleware, shipmentsController.updateShipment);
+shipmentsRoutes.get("/scan/:hbl", authMiddleware, shipmentsController.scanShipment);
 
 /* //create tracking or update if exists
 shipmentsRoutes.post("/", async (req: Request, res: Response) => {

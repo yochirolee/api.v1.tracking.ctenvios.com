@@ -173,9 +173,45 @@ export const prisma_db = {
 			});
 			return shipment;
 		},
-		updateManyShipments: async (data: Partial<Shipment>[]) => {
-			const shipments = await prisma.shipment.updateMany({ data });
+		updateManyShipments: async (hbls: string[], data: Partial<Shipment>) => {
+			const shipments = await prisma.shipment.updateMany({
+				where: { hbl: { in: hbls } },
+				data,
+			});
 			return shipments;
+		},
+		scanShipment: async (hbl: string) => {
+			const shipment = await prisma.shipment.findUnique({
+				where: { hbl },
+			});
+			return shipment;
+		},
+		getShipmentsByInvoiceId: async (invoiceId: number) => {
+			const shipments = await prisma.shipment.findMany({
+				where: { invoiceId },
+				select: {
+					hbl: true,
+					invoiceId: true,
+					description: true,
+					agency: {
+						select: {
+							name: true,
+						},
+					},
+					state: true,
+					city: true,
+				},
+			});
+			return shipments.flatMap((shipment) => {
+				return {
+					hbl: shipment.hbl,
+					invoiceId: shipment.invoiceId,
+					description: shipment.description,
+					agency: shipment?.agency?.name,
+					state: shipment.state,
+					city: shipment.city,
+				};
+			});
 		},
 	},
 	containers: {
