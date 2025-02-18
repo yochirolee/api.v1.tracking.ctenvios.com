@@ -97,6 +97,7 @@ export const shipmentsController = {
 				return res.status(404).json({ message: "Invoice ID not found" });
 			}
 			const result = await prisma_db.shipments.getShipmentsByInvoiceId(invoiceId);
+			res.json(result);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
