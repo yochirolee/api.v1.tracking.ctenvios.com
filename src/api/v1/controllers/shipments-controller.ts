@@ -3,6 +3,7 @@ import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
+import { formatSearchResult } from "../utils/_format_search";
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
@@ -25,18 +26,20 @@ export const shipmentsController = {
 	},
 	searchShipments: async (req: Request, res: Response) => {
 		const search = req.query.query as string;
-		/* 	 	let shipments = await prisma_db.shipments.searchShipments(search);
-		if (shipments.length === 0) { 
-		const search_on_mysql = await mysql_db.parcels.search(search);
+		let existingShipments = await prisma_db.shipments.searchShipments(search);
+		if (existingShipments.length === 0) {
+			const search_on_mysql = await mysql_db.parcels.search(search);
 
-		//get all the hbl from the search
-		const hbls = search_on_mysql?.map((el) => el.hbl);
-		const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
-		const shipments = formatSearchResult(existingShipments, search_on_mysql);
-*/
+			//get all the hbl from the search
+			const hbls = search_on_mysql?.map((el) => el.hbl);
+			const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
+			const shipments = formatSearchResult(existingShipments, search_on_mysql);
 
-		const shipments = await prisma_db.shipments.searchShipments(search);
-		res.json(shipments);
+			//const shipments = await prisma_db.shipments.searchShipments(search);
+			res.json(shipments);
+		} else {
+			res.json(existingShipments);
+		}
 	},
 	getShipmentByHbl: async (req: Request, res: Response) => {
 		const hbl = req.params.hbl;
@@ -90,14 +93,28 @@ export const shipmentsController = {
 	scanShipment: async (req: Request, res: Response) => {
 		try {
 			const hbl = req.params.hbl;
-			const shipment = await prisma_db.shipments.scanShipment(hbl);
-			// i need the invoiceId and then all the shipments with that invoiceId
-			const invoiceId = shipment?.invoiceId;
-			if (!invoiceId) {
-				return res.status(404).json({ message: "Invoice ID not found" });
+			if (!hbl) {
+				return res.status(400).json({ message: "HBL is required" });
 			}
-			const result = await prisma_db.shipments.getShipmentsByInvoiceId(invoiceId);
-			res.json(result);
+			let shipment = await prisma_db.shipments.scanShipment(hbl);
+
+			if (shipment) {
+				const invoiceId = shipment?.invoiceId;
+				if (!invoiceId) {
+					return res.status(404).json({ message: "Invoice ID not found" });
+				}
+				const result = await prisma_db.shipments.getShipmentsByInvoiceId(invoiceId);
+				return res.json(result);
+			} else {
+				const mysql_parcel = await mysql_db.parcels.getInHblArray([hbl], false);
+				if (!mysql_parcel.length) {
+					return res.status(404).json({ message: "Shipment not found" });
+				}
+
+				const invoiceId = mysql_parcel[0].invoiceId;
+				const result = await mysql_db.parcels.getByInvoiceId(invoiceId);
+				return res.json(result);
+			}
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });

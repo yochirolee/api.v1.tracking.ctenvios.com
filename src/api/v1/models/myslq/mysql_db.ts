@@ -1,4 +1,5 @@
 import mysql_client from "../../config/mysql-client";
+import { formatSearchResult } from "../../utils/_format_search";
 export const mysql_db = {
 	containers: {
 		getById: async (id: number) => {
@@ -244,12 +245,13 @@ export const mysql_db = {
 		},
 
 		getByInvoiceId: async (invoiceId: number) => {
-			const query = "SELECT * FROM parcels WHERE invoiceId = ? LIMIT 1";
+			const query = "SELECT * FROM parcels WHERE invoiceId = ? ";
 			try {
 				const result = await mysql_client(query, [invoiceId]);
+				const formattedResult = formatSearchResult(result, result);
 				// Check if result is an array and has elements
 				if (Array.isArray(result) && result.length > 0) {
-					return result[0];
+					return formattedResult;
 				} else {
 					return null;
 				}

@@ -1,10 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { mysql_db } from "../models/myslq/mysql_db";
-import { ContainerStatus, Shipment, Status, UpdateMethod } from "@prisma/client";
+import { ContainerStatus, Shipment, UpdateMethod } from "@prisma/client";
 import supabase from "../config/supabase-client";
 import { prisma_db } from "../models/prisma/prisma_db";
 import { supabase_db } from "../models/supabase/supabase_db";
-import { formatSearchResult } from "../utils/format_search";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { z } from "zod";
 
@@ -200,7 +199,7 @@ export const containerController = {
 			}
 
 			const { containerId, timestamp, userId, statusId } = validatedInput.data;
-			console.log(containerId, timestamp, userId, statusId);	
+			console.log(containerId, timestamp, userId, statusId);
 
 			const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
 			if (!container) {
