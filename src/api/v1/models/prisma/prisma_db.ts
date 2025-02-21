@@ -1,4 +1,4 @@
-import { Agency, Container, Issues, Shipment, User } from "@prisma/client";
+import { Agency, Container, Location, Issues, Shipment, User, ShipmentEvent } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
 export const prisma_db = {
@@ -120,6 +120,7 @@ export const prisma_db = {
 					status: true,
 					events: {
 						include: { status: true },
+						orderBy: { timestamp: "asc" },
 					},
 					user: {
 						select: {
@@ -141,25 +142,74 @@ export const prisma_db = {
 			});
 			return shipments;
 		},
-		//tx to update a shipment and the events
-		updateShipment: async (hbl: string, data: Partial<Shipment>) => {
+
+		/* 	upsertTransaction: async (
+			locationData: Omit<Location, "id">,
+			shipmentData: Omit<Shipment, "id">,
+		) => {
 			const shipment = await prisma.$transaction(async (tx) => {
+				const location = await tx.location.upsert({
+					where: {
+						latitude_longitude: {
+							latitude: locationData.latitude,
+							longitude: locationData.longitude,
+						},
+					},
+					update: locationData,
+					create: locationData,
+				});
+				const shipment = await tx.shipment.upsert({
+					where: { hbl: shipmentData.hbl },
+					update: {
+						...shipmentData,
+						locationId: location?.id,
+					},
+					create: {
+						...shipmentData,
+						locationId: location?.id,
+					},
+				});
+
+				return shipment;
+			});
+			return shipment;
+		}, */
+
+		//tx to update a shipment and the events
+		scanShipmentTransaction: async (
+			data: Partial<Shipment>,
+			locationData: Omit<Location, "id">,
+		) => {
+			const shipment = await prisma.$transaction(async (tx) => {
+				const location = await tx.location.upsert({
+					where: {
+						latitude_longitude: {
+							latitude: locationData.latitude,
+							longitude: locationData.longitude,
+						},
+					},
+					update: locationData,
+					create: locationData,
+				});
 				const shipment = await tx.shipment.update({
-					where: { hbl },
+					where: { hbl: data.hbl },
 					data: {
 						statusId: data.statusId,
 						userId: data.userId,
 						updateMethod: data.updateMethod,
+						locationId: location.id,
+						timestamp: data.timestamp,
 					},
 				});
 				const events = await tx.shipmentEvent.upsert({
-					where: { hbl_statusId: { hbl, statusId: shipment.statusId } },
+					where: { hbl_statusId: { hbl: shipment.hbl, statusId: shipment.statusId } },
 					update: {
 						hbl: shipment.hbl,
 						timestamp: shipment.timestamp,
 						statusId: shipment.statusId,
 						userId: shipment.userId,
 						updateMethod: shipment.updateMethod,
+						locationId: shipment.locationId,
 					},
 					create: {
 						hbl: shipment.hbl,
@@ -167,24 +217,29 @@ export const prisma_db = {
 						statusId: shipment.statusId,
 						userId: shipment.userId,
 						updateMethod: shipment.updateMethod,
+						locationId: shipment.locationId,
 					},
 				});
 				return shipment;
 			});
 			return shipment;
 		},
-		updateManyShipments: async (hbls: string[], data: Partial<Shipment>) => {
-			const shipments = await prisma.shipment.updateMany({
-				where: { hbl: { in: hbls } },
-				data,
+
+		scannedShipments: async (statusId: number, userId: string) => {
+			const shipments = await prisma.shipment.findMany({
+				select: {
+					hbl: true,
+					invoiceId: true,
+					description: true,
+					agency: {
+						select: {
+							name: true,
+						},
+					},
+				},
+				where: { statusId, userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
 			});
 			return shipments;
-		},
-		scanShipment: async (hbl: string) => {
-			const shipment = await prisma.shipment.findUnique({
-				where: { hbl },
-			});
-			return shipment;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {
 			const shipments = await prisma.shipment.findMany({
@@ -212,6 +267,16 @@ export const prisma_db = {
 					city: shipment.city,
 				};
 			});
+		},
+	},
+	events: {
+		upsert: async (data: ShipmentEvent) => {
+			const event = await prisma.shipmentEvent.upsert({
+				where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
+				update: data,
+				create: data,
+			});
+			return event;
 		},
 	},
 	containers: {
@@ -293,6 +358,21 @@ export const prisma_db = {
 				data,
 			});
 			return issue;
+		},
+	},
+	locations: {
+		upsertLocation: async (data: Location) => {
+			const location = await prisma.location.upsert({
+				where: {
+					latitude_longitude: {
+						latitude: data.latitude,
+						longitude: data.longitude,
+					},
+				},
+				update: data,
+				create: data,
+			});
+			return location;
 		},
 	},
 };

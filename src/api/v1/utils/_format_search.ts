@@ -39,8 +39,6 @@ interface FormattedParcel {
 	receiver: string;
 	state: string;
 	city: string;
-	locationId?: number;
-	location?: string;
 	status?: string;
 	timestamp?: Date;
 	updateMethod?: string;

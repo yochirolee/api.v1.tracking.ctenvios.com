@@ -13,8 +13,8 @@ shipmentsRoutes.get("/search", authMiddleware, shipmentsController.searchShipmen
 shipmentsRoutes.get("/hbl/:hbl", authMiddleware, shipmentsController.getShipmentByHbl);
 
 //upsert shipments
-shipmentsRoutes.put("/update", authMiddleware, shipmentsController.updateShipment);
-shipmentsRoutes.get("/scan/:hbl", authMiddleware, shipmentsController.scanShipment);
+shipmentsRoutes.get("/scanned/:statusId", authMiddleware, shipmentsController.scannedShipments);
+shipmentsRoutes.post("/scan", authMiddleware, shipmentsController.scanShipment);
 
 /* //create tracking or update if exists
 shipmentsRoutes.post("/", async (req: Request, res: Response) => {

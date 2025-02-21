@@ -4,6 +4,9 @@ import { mysql_db } from "../models/myslq/mysql_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
 import { formatSearchResult } from "../utils/_format_search";
+import { Shipment, UpdateMethod } from "@prisma/client";
+import axios from "axios";
+import { getLocation } from "../utils/_getLocation";
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
@@ -27,6 +30,7 @@ export const shipmentsController = {
 	searchShipments: async (req: Request, res: Response) => {
 		const search = req.query.query as string;
 		let existingShipments = await prisma_db.shipments.searchShipments(search);
+		console.log(existingShipments);
 		if (existingShipments.length === 0) {
 			const search_on_mysql = await mysql_db.parcels.search(search);
 
@@ -88,9 +92,10 @@ export const shipmentsController = {
 			},
 			events: [...mysql_events, ...(shipment?.events || [])],
 		};
+		console.log(shipment_with_mysql);
 		res.json(shipment_with_mysql);
 	},
-	scanShipment: async (req: Request, res: Response) => {
+	/* scanShipment: async (req: Request, res: Response) => {
 		try {
 			const hbl = req.params.hbl;
 			if (!hbl) {
@@ -119,39 +124,77 @@ export const shipmentsController = {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
-	},
-	updateShipment: async (req: Request, res: Response) => {
-		try {
-			const { hbl, statusId, userId, updateMethod } = req.body;
+	}, */
 
-			const shipment = await prisma_db.shipments.updateShipment(hbl, {
+
+	scanShipment: async (req: Request, res: Response) => {
+		try {
+			const { hbl, statusId, agencyId, timestamp, lat, loc } = req.body;
+			const userId = req.user.userId;
+
+			/* 	const shipmentData = {
+				hbl,
+				invoiceId: null,
+				description: null,
+				containerId: null,
+				userId: userId,
+				agencyId: 0,
+				timestamp: timestamp,
+				state: null,
+				city: null,
+				sender: null,
+				receiver: null,
+				updateMethod: null,
+				statusId: statusId,
+				locationId: null,
+			}; */
+
+			const locationData = {
+				latitude: lat,
+				longitude: loc,
+				name: null,
+				address: null,
+				state: null,
+				city: null,
+				country_code: null,
+				updatedAt: new Date(),
+				createdAt: new Date(),
+			};
+			const location = await getLocation(lat, loc);
+			locationData.name = location?.display_name;
+			locationData.state = location?.address?.state;
+			locationData.city = location?.address?.city;
+			locationData.country_code = location?.address?.country_code;
+			locationData.updatedAt = new Date();
+
+			const shipmentData = {
+				hbl,
 				statusId,
 				userId,
-				updateMethod,
-			});
+				updateMethod: UpdateMethod.SCANNER,
+				timestamp: new Date(timestamp),
+			};
 
+			const shipment = await prisma_db.shipments.scanShipmentTransaction(
+				shipmentData,
+				locationData,
+			);
 			res.json(shipment);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
 	},
-	updateManyShipments: async (req: Request, res: Response) => {
+	scannedShipments: async (req: Request, res: Response) => {
 		try {
-			const { hbls, statusId, updateMethod, timestamp } = req.body;
-			const userId = req.user?.id;
-			const shipments = await prisma_db.shipments.updateManyShipments(hbls, {
-				statusId,
-				updateMethod,
-				userId,
-				timestamp,
-			});
+			const statusId = parseInt(req.params.statusId);
+			const userId = req.user.userId;
+			const shipments = await prisma_db.shipments.scannedShipments(statusId, userId);
 			res.json(shipments);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
 	},
-
 	//a stats for the shipments
 };
