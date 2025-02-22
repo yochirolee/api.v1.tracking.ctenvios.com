@@ -30,7 +30,6 @@ export const shipmentsController = {
 	searchShipments: async (req: Request, res: Response) => {
 		const search = req.query.query as string;
 		let existingShipments = await prisma_db.shipments.searchShipments(search);
-		console.log(existingShipments);
 		if (existingShipments.length === 0) {
 			const search_on_mysql = await mysql_db.parcels.search(search);
 
@@ -92,7 +91,6 @@ export const shipmentsController = {
 			},
 			events: [...mysql_events, ...(shipment?.events || [])],
 		};
-		console.log(shipment_with_mysql);
 		res.json(shipment_with_mysql);
 	},
 	/* scanShipment: async (req: Request, res: Response) => {
@@ -126,11 +124,13 @@ export const shipmentsController = {
 		}
 	}, */
 
-
 	scanShipment: async (req: Request, res: Response) => {
 		try {
-			const { hbl, statusId, agencyId, timestamp, lat, loc } = req.body;
+			const { hbl, statusId, timestamp, lat, loc } = req.body;
 			const userId = req.user.userId;
+			if (!hbl || !statusId || !timestamp || !userId) {
+				return res.status(400).json({ message: "All fields are required" });
+			}
 
 			/* 	const shipmentData = {
 				hbl,
@@ -189,6 +189,9 @@ export const shipmentsController = {
 		try {
 			const statusId = parseInt(req.params.statusId);
 			const userId = req.user.userId;
+			if (!statusId) {
+				return res.status(400).json({ message: "Status ID is required" });
+			}
 			const shipments = await prisma_db.shipments.scannedShipments(statusId, userId);
 			res.json(shipments);
 		} catch (error) {

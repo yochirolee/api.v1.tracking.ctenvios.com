@@ -119,8 +119,16 @@ export const prisma_db = {
 				include: {
 					status: true,
 					events: {
-						include: { status: true },
+						include: { status: true, location: true, user: true },
 						orderBy: { timestamp: "asc" },
+					},
+					location: {
+						select: {
+							country_code: true,
+							city: true,
+							state: true,
+							name: true,
+						},
 					},
 					user: {
 						select: {
@@ -180,8 +188,9 @@ export const prisma_db = {
 			data: Partial<Shipment>,
 			locationData: Omit<Location, "id">,
 		) => {
-			const shipment = await prisma.$transaction(async (tx) => {
-				const location = await tx.location.upsert({
+			let location: Location | null = null;
+			if (locationData.latitude && locationData.longitude) {
+				location = await prisma.location.upsert({
 					where: {
 						latitude_longitude: {
 							latitude: locationData.latitude,
@@ -191,17 +200,19 @@ export const prisma_db = {
 					update: locationData,
 					create: locationData,
 				});
+			}
+			const shipment = await prisma.$transaction(async (tx) => {
 				const shipment = await tx.shipment.update({
 					where: { hbl: data.hbl },
 					data: {
 						statusId: data.statusId,
 						userId: data.userId,
 						updateMethod: data.updateMethod,
-						locationId: location.id,
+						locationId: location?.id,
 						timestamp: data.timestamp,
 					},
 				});
-				const events = await tx.shipmentEvent.upsert({
+				await tx.shipmentEvent.upsert({
 					where: { hbl_statusId: { hbl: shipment.hbl, statusId: shipment.statusId } },
 					update: {
 						hbl: shipment.hbl,
@@ -226,11 +237,13 @@ export const prisma_db = {
 		},
 
 		scannedShipments: async (statusId: number, userId: string) => {
+			
 			const shipments = await prisma.shipment.findMany({
 				select: {
 					hbl: true,
 					invoiceId: true,
 					description: true,
+					timestamp: true,
 					agency: {
 						select: {
 							name: true,
@@ -239,6 +252,7 @@ export const prisma_db = {
 				},
 				where: { statusId, userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
 			});
+			console.log(shipments);
 			return shipments;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {

@@ -90,10 +90,8 @@ export const user_controller = {
 					expiresIn: "4h",
 				},
 			);
-			console.log(token);
 			res.json({ token });
 		} catch (error: any) {
-			console.log(error);
 			return res.status(500).json({ error: error.message });
 		}
 	},
