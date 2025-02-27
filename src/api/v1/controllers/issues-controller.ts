@@ -9,6 +9,9 @@ const schema = z.object({
 	type: z.enum(["DAMAGE", "DELAY", "INCORRECT_LABEL", "LOST", "OTHER"]),
 	userId: z.string(),
 	imageUrl: z.string().optional(),
+	title: z.string(),
+	shipment: z.string(),
+	user: z.string(),
 	// Remove optional fields that are handled by Prisma
 });
 
@@ -25,12 +28,5 @@ export const issuesController = {
 		const issue = await prisma_db.issues.getIssueById(Number(req.params.id));
 		res.status(200).json(issue);
 	},
-	upsertIssue: async (req: Request, res: Response) => {
-		const issueData = schema.safeParse(req.body);
-		if (!issueData.success) {
-			return res.status(400).json({ errors: issueData.error.format() });
-		}
-		const issue = await prisma_db.issues.createIssue(issueData.data);
-		res.status(200).json(issue);
-	},
+	upsertIssue: async (req: Request, res: Response) => {},
 };

@@ -145,7 +145,9 @@ enum UpdateMethod {
 model Issues {
   id Int @id @default(autoincrement())
   hbl String
+  invoiceId Int?
   shipment Shipment @relation(fields: [hbl], references: [hbl])
+  title String
   description String
   type IssueType
   resolved Boolean @default(false)
@@ -153,11 +155,19 @@ model Issues {
   resolvedById String?  
   resolvedAt DateTime?
   comments IssueComments[]
-  imageUrl String?
+  images IssuesImages[]
   userId String
   user User @relation("IssueCreator", fields: [userId], references: [id])
   createdAt DateTime @default(now()) @db.Timestamptz()
   updatedAt DateTime @updatedAt @db.Timestamptz()
+  @@index([hbl])
+}
+
+model IssuesImages {
+  id Int @id @default(autoincrement())
+  issueId Int
+  issue Issues @relation(fields: [issueId], references: [id])
+  imageUrl String
 }
 
 model IssueComments {
@@ -177,6 +187,9 @@ enum IssueType {
   DELAY
   INCORRECT_LABEL
   LOST
+  CUSTOMS_PROBLEM
+  DOCUMENTATION_ISSUE
+  PAYMENT_ISSUE
   OTHER
 
 
@@ -202,6 +215,7 @@ model Container {
 enum ContainerStatus {
   IN_PORT
   UNGROUPED
+  COMPLETED
  
 }
 

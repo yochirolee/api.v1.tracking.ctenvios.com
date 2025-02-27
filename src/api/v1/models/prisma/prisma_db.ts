@@ -1,4 +1,13 @@
-import { Agency, Container, Location, Issues, Shipment, User, ShipmentEvent } from "@prisma/client";
+import {
+	Agency,
+	Container,
+	Location,
+	Issues,
+	Shipment,
+	User,
+	ShipmentEvent,
+	Prisma,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
 export const prisma_db = {
@@ -147,6 +156,7 @@ export const prisma_db = {
 				include: {
 					events: true,
 				},
+			
 			});
 			return shipments;
 		},
@@ -237,7 +247,6 @@ export const prisma_db = {
 		},
 
 		scannedShipments: async (statusId: number, userId: string) => {
-			
 			const shipments = await prisma.shipment.findMany({
 				select: {
 					hbl: true,
@@ -329,6 +338,55 @@ export const prisma_db = {
 			const container = await prisma.container.delete({ where: { id } });
 			return container;
 		},
+		/* 	getContainersStats: async () => {
+			const containers = await prisma.container.findMany({
+				include: {
+					shipments: {
+						include: {
+							status: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+				},
+			});
+
+			const stats = containers.reduce(
+				(acc, container) => {
+					const statusCounts = container.shipments.reduce((statusAcc, shipment) => {
+						const status = shipment.status;
+						const key = status.id;
+						if (!statusAcc[key]) {
+							statusAcc[key] = {
+								count: 0,
+								name: status.name,
+							};
+						}
+						statusAcc[key].count++;
+						return statusAcc;
+					}, {} as Record<number, { count: number; name: string }>);
+
+					acc.push({
+						containerId: container.id,
+						containerNumber: container.containerNumber,
+						statusCounts,
+						totalShipments: container.shipments.length,
+					});
+					return acc;
+				},
+				[] as Array<{
+					containerId: number;
+					containerNumber: string;
+					statusCounts: Record<number, { count: number; name: string }>;
+					totalShipments: number;
+				}>,
+			);
+
+			return stats;
+		}, */
 	},
 	agencies: {
 		getAgencies: async () => {
@@ -346,7 +404,36 @@ export const prisma_db = {
 	},
 	issues: {
 		getIssues: async () => {
-			const issues = await prisma.issues.findMany({});
+			const issues = await prisma.issues.findMany({
+				include: {
+					comments: true,
+					user: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+					shipment: {
+						select: {
+							hbl: true,
+							invoiceId: true,
+							agency: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+							description: true,
+							status: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+				},
+			});
 			return issues;
 		},
 		getIssuesWithComments: async () => {
@@ -367,9 +454,11 @@ export const prisma_db = {
 			});
 			return issue;
 		},
-		createIssue: async (data: Pick<Issues, "hbl" | "description" | "type" | "userId">) => {
+		createIssue: async (data: Prisma.IssuesCreateInput) => {
 			const issue = await prisma.issues.create({
-				data,
+				data: {
+					...data,
+				},
 			});
 			return issue;
 		},

@@ -8,4 +8,5 @@ containerRoutes.post("/toPort/:id", authMiddleware, containerController.containe
 containerRoutes.put("/update/:id/shipments", authMiddleware, containerController.updateContainerStatus);
 containerRoutes.get("/", authMiddleware, containerController.getContainers);
 containerRoutes.get("/:id/shipments", containerController.getShipmentsByContainerId);
+//containerRoutes.get("/stats", containerController.containersStats);
 export default containerRoutes;

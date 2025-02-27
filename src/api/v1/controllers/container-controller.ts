@@ -256,4 +256,8 @@ export const containerController = {
 		const shipments = await prisma_db.containers.getContainerWithShipmentsById(containerId);
 		res.json(shipments);
 	},
+	/* containersStats: async (req: Request, res: Response) => {
+		const stats = await prisma_db.containers.getContainersStats();
+		res.json(stats);
+	}, */
 };

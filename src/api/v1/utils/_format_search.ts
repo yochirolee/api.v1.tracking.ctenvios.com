@@ -70,7 +70,9 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): Form
 		const baseParcel = {
 			hbl: parcel.hbl,
 			invoiceId: parcel.invoiceId,
-			agency: parcel.agency ? toCamelCase(parcel.agency) : undefined,
+			agency: {
+				name: parcel.agency,
+			},
 			invoiceDate: parcel.invoiceDate,
 			description: toCamelCase(parcel.description),
 			sender: toCamelCase(parcel.sender),

@@ -29,20 +29,15 @@ export const shipmentsController = {
 	},
 	searchShipments: async (req: Request, res: Response) => {
 		const search = req.query.query as string;
-		let existingShipments = await prisma_db.shipments.searchShipments(search);
-		if (existingShipments.length === 0) {
-			const search_on_mysql = await mysql_db.parcels.search(search);
 
-			//get all the hbl from the search
-			const hbls = search_on_mysql?.map((el) => el.hbl);
-			const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
-			const shipments = formatSearchResult(existingShipments, search_on_mysql);
+		const search_on_mysql = await mysql_db.parcels.search(search);
 
-			//const shipments = await prisma_db.shipments.searchShipments(search);
-			res.json(shipments);
-		} else {
-			res.json(existingShipments);
-		}
+		//get all the hbl from the search
+		const hbls = search_on_mysql?.map((el) => el.hbl);
+		const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
+		const shipments = formatSearchResult(existingShipments, search_on_mysql);
+
+		res.json(shipments);
 	},
 	getShipmentByHbl: async (req: Request, res: Response) => {
 		const hbl = req.params.hbl;
