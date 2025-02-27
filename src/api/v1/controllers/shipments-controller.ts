@@ -5,7 +5,6 @@ import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
 import { formatSearchResult } from "../utils/_format_search";
 import { Shipment, UpdateMethod } from "@prisma/client";
-import axios from "axios";
 import { getLocation } from "../utils/_getLocation";
 
 export const shipmentsController = {

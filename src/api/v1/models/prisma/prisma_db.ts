@@ -154,9 +154,17 @@ export const prisma_db = {
 			const shipments = await prisma.shipment.findMany({
 				where: { hbl: { in: hbls } },
 				include: {
-					events: true,
+					status: true,
+					agency: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 				},
-			
+				orderBy: {
+					timestamp: "desc",
+				},
 			});
 			return shipments;
 		},

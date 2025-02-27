@@ -23,9 +23,13 @@ interface MySqlParcel {
 
 interface Shipment {
 	hbl: string;
-	status?: string;
+	status?: {
+		id: number;
+		name: string;
+	};
 	timestamp?: Date;
 	updateMethod?: string;
+	
 }
 
 // Add return type interface
