@@ -51,7 +51,7 @@ export const generateMySqlEvents = (search_on_mysql: any) => {
 				id: 3,
 				name: "In Container",
 				code: "IN_CONTAINER",
-				description: "Loaded in Container " + search_on_mysql.containerId,
+				description: search_on_mysql?.containerName + " - " + search_on_mysql.containerId,
 			},
 			updateMethod: "SYSTEM",
 		});
