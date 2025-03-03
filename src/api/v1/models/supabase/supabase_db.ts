@@ -1,4 +1,4 @@
-import {  IssuesImages, Prisma, Shipment, ShipmentEvent } from "@prisma/client";
+import { Prisma, Shipment, ShipmentEvent } from "@prisma/client";
 import supabase from "../../config/supabase-client";
 
 export const supabase_db = {
@@ -14,14 +14,5 @@ export const supabase_db = {
 			});
 		},
 	},
-	issues: {
-		upsert: async (issues: Omit<Prisma.IssuesCreateInput, "id">[]) => {
-			return await supabase.from("Issues").upsert(issues, { onConflict: "hbl" });
-		},
-	},
-	issuesImages: {
-		upsert: async (issuesImages: Omit<IssuesImages, "id">[]) => {
-			return await supabase.from("IssuesImages").upsert(issuesImages, { onConflict: "issueId" });
-		},
-	},
+
 };

@@ -6,7 +6,7 @@ import {
 	Shipment,
 	User,
 	ShipmentEvent,
-	Prisma,
+	IssueComments,
 } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
@@ -80,6 +80,11 @@ export const prisma_db = {
 							name: true,
 						},
 					},
+					_count: {
+						select: {
+							issues: true,
+						},
+					},
 				},
 				orderBy: {
 					timestamp: "desc",
@@ -128,9 +133,36 @@ export const prisma_db = {
 				include: {
 					status: true,
 					events: {
-						include: { status: true, location: true, user: true },
+						include: {
+							status: true,
+							location: true,
+
+							user: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
 						orderBy: { timestamp: "asc" },
 					},
+					issues: {
+						select: {
+							id: true,
+							title: true,
+							description: true,
+							type: true,
+							priority: true,
+							timestamp: true,
+							user: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+
 					location: {
 						select: {
 							country_code: true,
@@ -139,6 +171,7 @@ export const prisma_db = {
 							name: true,
 						},
 					},
+
 					user: {
 						select: {
 							id: true,
@@ -411,10 +444,14 @@ export const prisma_db = {
 		},
 	},
 	issues: {
-		getIssues: async () => {
+		getIssues: async ({ limit = 10, page = 1 }: { limit?: number; page?: number } = {}) => {
 			const issues = await prisma.issues.findMany({
 				include: {
-					comments: true,
+					_count: {
+						select: {
+							comments: true,
+						},
+					},
 					user: {
 						select: {
 							id: true,
@@ -423,7 +460,6 @@ export const prisma_db = {
 					},
 					shipment: {
 						select: {
-							hbl: true,
 							invoiceId: true,
 							agency: {
 								select: {
@@ -441,8 +477,33 @@ export const prisma_db = {
 						},
 					},
 				},
+				skip: (page - 1) * limit,
+				take: limit,
+				orderBy: {
+					timestamp: "desc",
+				},
 			});
-			return issues;
+
+			const result = issues.map((issue) => {
+				return {
+					id: issue.id,
+					hbl: issue.hbl,
+					invoiceId: issue.shipment.invoiceId,
+					priority: issue.priority,
+					type: issue.type,
+					title: issue.title,
+					description: issue.description,
+					resolved: issue.resolved,
+					resolvedAt: issue.resolvedAt,
+					timestamp: issue.timestamp,
+					user: issue.user,
+					comments: issue._count.comments,
+					agency: issue.shipment.agency,
+					shipmentDescription: issue.shipment.description,
+					status: issue.shipment.status,
+				};
+			});
+			return result;
 		},
 		getIssuesWithComments: async () => {
 			const issues = await prisma.issues.findMany({
@@ -462,15 +523,81 @@ export const prisma_db = {
 			});
 			return issue;
 		},
-		createIssue: async (data: Prisma.IssuesCreateInput) => {
-			const issue = await prisma.issues.create({
+		createIssue: async (
+			data: Pick<Issues, "hbl" | "title" | "description" | "type" | "userId" | "priority">,
+		) => {
+			const shipment = await prisma.shipment.update({
+				where: { hbl: data.hbl },
 				data: {
-					...data,
+					statusId: 11,
+					timestamp: new Date(),
 				},
+			});
+			if (!shipment) {
+				throw new Error("Shipment not found");
+			}
+
+			const issue = await prisma.issues.create({
+				data: { ...data },
 			});
 			return issue;
 		},
+		updateIssue: async (id: number, data: Partial<Issues>) => {
+			const issue = await prisma.issues.update({ where: { id }, data });
+			return issue;
+		},
+
+		deleteIssue: async (id: number, userId: string): Promise<Issues> => {
+			const issue = await prisma.issues.findUnique({
+				where: { id },
+			});
+
+			if (!issue || issue.userId !== userId) {
+				throw new Error("Unauthorized: Only the issue owner can delete it");
+			}
+
+			const deletedIssue = await prisma.issues.delete({ where: { id } });
+			return deletedIssue;
+		},
 	},
+	issueComments: {
+		createIssueComment: async (data: Pick<IssueComments, "issueId" | "comment" | "userId">) => {
+			const issueComment = await prisma.issueComments.create({ data });
+			return issueComment;
+		},
+		updateIssueComment: async (
+			id: number,
+			data: Partial<IssueComments>,
+			userId: string,
+		): Promise<IssueComments> => {
+			const comment = await prisma.issueComments.findUnique({
+				where: { id },
+			});
+
+			if (!comment || comment.userId !== userId) {
+				throw new Error("Unauthorized: Only the comment owner can update it");
+			}
+
+			const issueComment = await prisma.issueComments.update({
+				where: { id },
+				data,
+			});
+			return issueComment;
+		},
+		deleteIssueComment: async (id: number, userId: string): Promise<IssueComments> => {
+			const comment = await prisma.issueComments.findUnique({
+				where: { id },
+			});
+
+			if (!comment || comment.userId !== userId) {
+				throw new Error("Unauthorized: Only the comment owner can delete it");
+			}
+
+			const issueComment = await prisma.issueComments.delete({ where: { id } });
+			return issueComment;
+		},
+	},
+
 	locations: {
 		upsertLocation: async (data: Location) => {
 			const location = await prisma.location.upsert({

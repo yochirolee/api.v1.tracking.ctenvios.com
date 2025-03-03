@@ -58,10 +58,6 @@ model Warehouse {
   agency Agency @relation(fields: [agencyId], references: [id]) 
 }
 
-
-
-
-
 enum Roles {
   ROOT
   ADMINISTRATOR
@@ -130,6 +126,7 @@ model ShipmentEvent {
   user User @relation(fields: [userId], references: [id])
   location Location? @relation(fields: [locationId], references: [id])
   locationId Int?
+  images Images[]
   @@index([hbl,statusId] )
   @@unique([hbl,statusId])
 }
@@ -141,45 +138,61 @@ enum UpdateMethod {
   
 }
 
+model Images {
+  id Int @id @default(autoincrement())
+  imageUrl String
+  entityType EntityType
+  entityId Int
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  issue Issues? @relation(fields: [issueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  issueId Int?
+  shipmentEvent ShipmentEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  eventId Int?
+  comment IssueComments? @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commentId Int?
+
+  @@index([entityType, entityId])
+  @@index([issueId])
+  @@index([eventId])
+  @@index([commentId])
+}
+
+enum EntityType {
+  ISSUE
+  EVENT
+  COMMENT
+}
 
 model Issues {
   id Int @id @default(autoincrement())
   hbl String
-  invoiceId Int?
   shipment Shipment @relation(fields: [hbl], references: [hbl])
   title String
   description String
   type IssueType
+  priority IssuePriority @default(MEDIUM)
   resolved Boolean @default(false)
   resolvedBy User? @relation("IssueResolver", fields: [resolvedById], references: [id])
   resolvedById String?  
-  resolvedAt DateTime?
+  resolvedAt DateTime? @db.Timestamptz()
   comments IssueComments[]
-  images IssuesImages[]
+  images Images[]
   userId String
   user User @relation("IssueCreator", fields: [userId], references: [id])
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @updatedAt @db.Timestamptz()
+  timestamp DateTime @default(now()) @db.Timestamptz()
   @@index([hbl])
-}
-
-model IssuesImages {
-  id Int @id @default(autoincrement())
-  issueId Int
-  issue Issues @relation(fields: [issueId], references: [id])
-  imageUrl String
 }
 
 model IssueComments {
   id Int @id @default(autoincrement())
   issueId Int
-  issue Issues @relation(fields: [issueId], references: [id])
+  issue Issues @relation(fields: [issueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   comment String
-  imageUrl String?
   userId String
   user User @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now()) @db.Timestamptz()
   updatedAt DateTime @updatedAt @db.Timestamptz()
+  images Images[]
 }
 
 enum IssueType {
@@ -191,8 +204,12 @@ enum IssueType {
   DOCUMENTATION_ISSUE
   PAYMENT_ISSUE
   OTHER
-
-
+}
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
 }
 
 model Status {

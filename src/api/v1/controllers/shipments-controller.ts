@@ -48,6 +48,22 @@ export const shipmentsController = {
 			mysql_db.parcels.getInHblArray([hbl], true),
 		]);
 
+		//merge issues and events
+		const issues = shipment?.issues;
+		const events = shipment?.events;
+		const mergedIssues = [
+			...(issues?.map((issue) => ({
+				id: issue.id,
+				status: {
+					name: issue.title,
+					description: issue.description,
+				},
+				timestamp: issue.timestamp,
+				user: issue.user,
+			})) || []),
+			...(events || []),
+		].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
 		const mslq_parcel = search_on_mysql[0];
 		const mysql_events = generateMySqlEvents(mslq_parcel);
 		const shippingAddress = toCamelCase(
@@ -83,7 +99,7 @@ export const shipmentsController = {
 				state: mslq_parcel.province,
 				city: mslq_parcel.city,
 			},
-			events: [...mysql_events, ...(shipment?.events || [])],
+			events: [...mysql_events, ...(mergedIssues || [])],
 		};
 		res.json(shipment_with_mysql);
 	},

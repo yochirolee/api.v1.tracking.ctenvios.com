@@ -2,17 +2,27 @@
 import { Request, Response } from "express";
 import { prisma_db } from "../models/prisma/prisma_db";
 import { z } from "zod";
-
-const schema = z.object({
+import { IssueType, IssuePriority } from "@prisma/client";
+const issueSchema = z.object({
 	hbl: z.string(),
-	description: z.string(),
-	type: z.enum(["DAMAGE", "DELAY", "INCORRECT_LABEL", "LOST", "OTHER"]),
-	userId: z.string(),
-	imageUrl: z.string().optional(),
 	title: z.string(),
-	shipment: z.string(),
-	user: z.string(),
+	description: z.string(),
+	type: z.nativeEnum(IssueType),
+	priority: z.nativeEnum(IssuePriority),
+	userId: z.string(),
+	resolvedById: z.string().optional().nullable(),
+	resolvedAt: z.date().optional().nullable(),
+	resolved: z.boolean().optional().default(false),
+
 	// Remove optional fields that are handled by Prisma
+});
+
+const commentSchema = z.object({
+	issueId: z.number(),
+	comment: z.string(),
+	userId: z.string(),
+	updatedAt: z.date().optional().nullable(),
+	createdAt: z.date().optional().nullable(),
 });
 
 export const issuesController = {
@@ -29,4 +39,70 @@ export const issuesController = {
 		res.status(200).json(issue);
 	},
 	upsertIssue: async (req: Request, res: Response) => {},
+	createIssue: async (req: Request, res: Response) => {
+		try {
+			const userId = req.user?.userId;
+			const { data: issueData, error } = issueSchema.safeParse({ ...req.body, userId });
+
+			if (error) {
+				return res.status(400).json({
+					error: "Validation failed",
+					details: error.errors.map((err) => ({
+						field: err.path.join("."),
+						message: err.message,
+						code: err.code,
+					})),
+				});
+			}
+
+			const issue = await prisma_db.issues.createIssue(issueData);
+			res.status(200).json(issue);
+		} catch (error) {
+			res.status(500).json({ error: "Failed to create issue" });
+		}
+	},
+	updateIssue: async (req: Request, res: Response) => {
+		try {
+			const issue = await prisma_db.issues.updateIssue(Number(req.params.id), req.body);
+			res.status(200).json(issue);
+		} catch (error) {
+			res.status(500).json({ error: "Failed to update issue" });
+		}
+	},
+	deleteIssue: async (req: Request, res: Response) => {
+		try {
+			const userId = req.user?.userId;
+			const issue = await prisma_db.issues.deleteIssue(Number(req.params.id), userId);
+			res.status(200).json(issue);
+		} catch (error) {
+			res.status(500).json({ error: "Failed to delete issue", details: error });
+		}
+	},
+	createIssueComment: async (req: Request, res: Response) => {
+		try {
+			const userId = req.user?.userId;
+			const issueId = Number(req.params.id);
+			const { data: issueCommentData, error } = commentSchema.safeParse({
+				...req.body,
+				issueId,
+				userId,
+			});
+			if (error) {
+				return res.status(400).json({
+					error: "Validation failed",
+					details: error.errors.map((err) => ({
+						field: err.path.join("."),
+						message: err.message,
+						code: err.code,
+					})),
+				});
+			}
+
+			const issueComment = await prisma_db.issueComments.createIssueComment(issueCommentData);
+
+			res.status(200).json(issueComment);
+		} catch (error) {
+			res.status(500).json({ error: "Failed to create issue comment", details: error });
+		}
+	},
 };
