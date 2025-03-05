@@ -15,11 +15,11 @@ async function main() {
 		await prisma.status.deleteMany({});
 		console.log("Clearing existing status...");
 
-		console.log("Seeding agencies...");
+		 console.log("Seeding agencies...");
 		//how to seed agencies from agencies.json?
 		await prisma.agency.createMany({
 			data: agenciesSeedData,
-		});
+		}); 
 
 		console.log("Seeding user...");
 		// Add user seeding

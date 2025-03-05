@@ -1,4 +1,4 @@
-import { Prisma, Shipment, ShipmentEvent } from "@prisma/client";
+import { Agency, Shipment, ShipmentEvent } from "@prisma/client";
 import supabase from "../../config/supabase-client";
 
 export const supabase_db = {
@@ -14,5 +14,9 @@ export const supabase_db = {
 			});
 		},
 	},
-
+	agencies: {
+		upsert: async (agencies: Partial<Agency>[]) => {
+			return await supabase.from("Agency").upsert(agencies, { onConflict: "id" });
+		},
+	},
 };

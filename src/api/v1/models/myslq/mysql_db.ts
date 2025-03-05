@@ -194,7 +194,7 @@ export const mysql_db = {
 
 				// Determine the WHERE clause based on search term
 				if (trimmedSearchTerm.length === 10 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "c.cel = ?";
+					whereClause = "c.cel = ? ";
 					queryParams = [trimmedSearchTerm];
 				} else if (trimmedSearchTerm.length === 8 && !isNaN(Number(trimmedSearchTerm))) {
 					whereClause = "d.cel = ?";
@@ -223,7 +223,7 @@ export const mysql_db = {
 					mysql_client("SELECT FOUND_ROWS() as total"),
 				]);
 
-				return parcels;
+				return [parcels, total];
 			} catch (error) {
 				console.error(`Error occurred during package search with term "${searchTerm}":`, error);
 				throw new Error("An error occurred while searching for packages. Please try again later.");

@@ -62,35 +62,38 @@ export const prisma_db = {
 	},
 	shipments: {
 		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
-			const shipments = await prisma.shipment.findMany({
-				include: {
-					agency: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-					events: {
-						select: {
-							timestamp: true,
-							status: true,
-							location: true,
-							user: {
-								select: {
-									id: true,
-									name: true,
-								},
+			const [shipments, totalShipments] = await Promise.all([
+				prisma.shipment.findMany({
+					include: {
+						agency: {
+							select: {
+								id: true,
+								name: true,
 							},
 						},
-						orderBy: { timestamp: "asc" },
-						take: 1,
+						events: {
+							select: {
+								timestamp: true,
+								status: true,
+								location: true,
+								user: {
+									select: {
+										id: true,
+										name: true,
+									},
+								},
+							},
+							orderBy: { timestamp: "desc" },
+							take: 1,
+						},
 					},
-				},
+					take: limit,
+					skip: offset,
+				}),
+				prisma.shipment.count(),
+			]);
 
-				take: limit,
-				skip: offset,
-			});
-			return shipments;
+			return { shipments, totalShipments };
 		},
 
 		//search shipments by hbl or invoiceId or description or sender or receiver
@@ -158,7 +161,8 @@ export const prisma_db = {
 		getShipmentsByHbls: async (hbls: string[]) => {
 			const shipments = await prisma.shipment.findMany({
 				where: { hbl: { in: hbls } },
-				include: {
+				select: {
+					hbl: true,
 					agency: {
 						select: {
 							id: true,
@@ -181,40 +185,9 @@ export const prisma_db = {
 					},
 				},
 			});
+
 			return shipments;
 		},
-
-		/* 	upsertTransaction: async (
-			locationData: Omit<Location, "id">,
-			shipmentData: Omit<Shipment, "id">,
-		) => {
-			const shipment = await prisma.$transaction(async (tx) => {
-				const location = await tx.location.upsert({
-					where: {
-						latitude_longitude: {
-							latitude: locationData.latitude,
-							longitude: locationData.longitude,
-						},
-					},
-					update: locationData,
-					create: locationData,
-				});
-				const shipment = await tx.shipment.upsert({
-					where: { hbl: shipmentData.hbl },
-					update: {
-						...shipmentData,
-						locationId: location?.id,
-					},
-					create: {
-						...shipmentData,
-						locationId: location?.id,
-					},
-				});
-
-				return shipment;
-			});
-			return shipment;
-		}, */
 
 		//tx to update a shipment and the events
 		scanShipmentTransaction: async (
@@ -284,7 +257,11 @@ export const prisma_db = {
 								},
 							},
 						},
-						where: { userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) }, statusId },
+						where: {
+							userId,
+							timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) },
+							statusId,
+						},
 					},
 				},
 			});
@@ -338,13 +315,13 @@ export const prisma_db = {
 						include: {
 							events: {
 								select: {
+									timestamp: true,
 									status: true,
 									location: true,
 									user: {
 										select: {
 											id: true,
 											name: true,
-											
 										},
 									},
 								},

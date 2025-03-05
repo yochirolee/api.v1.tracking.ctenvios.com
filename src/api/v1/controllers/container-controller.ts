@@ -25,7 +25,7 @@ interface ParcelData {
 	receiver: string;
 	sender: string;
 	agencyId: number;
-	agencyName: string;
+	agency: string;
 	description: string;
 	province: string;
 	city: string;
@@ -73,83 +73,45 @@ export const containerController = {
 
 			const { containerId, timestamp, userId } = validatedInput.data;
 
-			// Fetch container data and validate existence
-			const containerData = await mysql_db.containers.getById(containerId);
+			// Parallel fetch of container data and parcels
+			const [containerData, container] = await Promise.all([
+				mysql_db.containers.getById(containerId),
+				mysql_db.containers.getParcelsByContainerId(containerId, true),
+			]);
+
 			if (!containerData) {
 				return res.status(404).json({ message: "Container not found" });
 			}
-
-			// Parallel execution with proper error handling
-			const [container, existingAgencies] = await Promise.all([
-				mysql_db.containers.getParcelsByContainerId(containerId, true),
-				prisma_db.agencies.getAgencies(),
-			]).catch((error) => {
-				throw new Error(`Failed to fetch container data: ${error.message}`);
-			});
 
 			if (!container.length) {
 				return res.status(404).json({ message: "No parcels found for this container" });
 			}
 
-			// Create container in Prisma
-			const createContainer = await prisma_db.containers.upsertContainer({
-				id: containerId,
-				containerNumber: containerData.name,
-				status: ContainerStatus.IN_PORT,
-				isActive: true,
-			});
+			// Parallel execution of container creation and agencies processing
+			const [createContainer, agenciesResult] = await Promise.all([
+				prisma_db.containers.upsertContainer({
+					id: containerId,
+					containerNumber: containerData.name,
+					status: ContainerStatus.IN_PORT,
+					isActive: true,
+				}),
+				(async () => {
+					const agenciesMap = new Map<number, Agency>();
+					container.forEach((parcel: ParcelData) => {
+						agenciesMap.set(parcel.agencyId, {
+							id: parcel.agencyId,
+							name: toCamelCase(parcel.agency),
+						});
+					});
+					return supabase_db.agencies.upsert(Array.from(agenciesMap.values()));
+				})(),
+			]);
 
-			// Process agencies
-			const agenciesInContainer = new Map<number, Agency>();
-			container.forEach((parcel: ParcelData) => {
-				agenciesInContainer.set(parcel.agencyId, {
-					id: parcel.agencyId,
-					name: parcel.agencyName,
-				});
-			});
-
-			const newAgencies = Array.from(agenciesInContainer.values()).filter(
-				(agency) => !existingAgencies.some((existing) => existing.id === agency.id),
-			);
-
-			if (newAgencies.length) {
-				return res.status(400).json({
-					agencies: newAgencies,
-					message: "New Agency found in container",
-				});
+			if (agenciesResult.error) {
+				throw new Error(`Error upserting agencies: ${agenciesResult.error.message}`);
 			}
 
-			// Prepare shipment data
-			const shipmentsInContainer = container.map((parcel: any) => ({
-				hbl: parcel.hbl,
-				invoiceId: parcel?.invoiceId,
-				containerId: createContainer.id,
-				receiver: toCamelCase(parcel.receiver),
-				sender: toCamelCase(parcel.sender),
-				agencyId: parcel.agencyId,
-				description: toCamelCase(parcel.description),
-
-				userId: userId.toString(),
-
-				state: parcel.province,
-				city: parcel.city,
-				updateMethod: UpdateMethod.SYSTEM,
-			}));
-
-			// Transaction for shipments and events
-			const { data: shipments, error: shipmentError } = await supabase_db.shipments.upsert(
-				shipmentsInContainer as Shipment[],
-			);
-
-			if (shipmentError) {
-				await prisma_db.containers.deleteContainer(containerId);
-				throw new Error(`Error upserting shipments: ${shipmentError.message}`);
-			}
-
-			if (!shipments?.length) {
-				return res.status(404).json({ message: "No shipments were created or updated" });
-			}
-
+			// Prepare data for parallel shipments and events creation
 			const fulltimestamp = new Date(
 				new Date(timestamp).setHours(
 					new Date().getHours(),
@@ -158,18 +120,43 @@ export const containerController = {
 				),
 			).toISOString();
 
-			const shipmentsEvents = shipments.map((shipment) => ({
-				hbl: shipment.hbl,
-				statusId: 4,
-				userId: shipment.userId,
-				timestamp: fulltimestamp,
+			const shipmentsInContainer = container.map((parcel: any) => ({
+				hbl: parcel.hbl,
+				invoiceId: parcel?.invoiceId,
+				containerId: createContainer.id,
+				receiver: toCamelCase(parcel.receiver),
+				sender: toCamelCase(parcel.sender),
+				agencyId: parcel.agencyId,
+				description: toCamelCase(parcel.description),
+				weight: parcel.weight,
+				userId: userId.toString(),
+				state: parcel.province,
+				city: parcel.city,
 			}));
 
-			const { data: eventsData, error: eventsError } = await supabase
-				.from("ShipmentEvent")
-				.upsert(shipmentsEvents, {
-					onConflict: "hbl,statusId",
-				});
+			// Parallel execution of shipments and events creation
+			const [shipmentsResult] = await Promise.all([
+				supabase_db.shipments.upsert(shipmentsInContainer as Shipment[]),
+			]);
+
+			if (shipmentsResult.error) {
+				await prisma_db.containers.deleteContainer(containerId);
+				throw new Error(`Error upserting shipments: ${shipmentsResult.error.message}`);
+			}
+
+			if (!shipmentsResult.data?.length) {
+				return res.status(404).json({ message: "No shipments were created or updated" });
+			}
+
+			const { error: eventsError } = await supabase.from("ShipmentEvent").upsert(
+				shipmentsResult.data.map((shipment) => ({
+					hbl: shipment.hbl,
+					statusId: 4,
+					userId: shipment.userId,
+					timestamp: fulltimestamp,
+				})),
+				{ onConflict: "hbl,statusId" },
+			);
 
 			if (eventsError) {
 				throw new Error(`Error upserting shipment events: ${eventsError.message}`);
@@ -177,9 +164,7 @@ export const containerController = {
 
 			return res.json({
 				success: true,
-				container: createContainer,
-				shipments,
-				events: eventsData,
+				message: "Container to port processed successfully",
 			});
 		} catch (error) {
 			console.error("containerToPort error:", error);
@@ -252,6 +237,7 @@ export const containerController = {
 
 	getShipmentsByContainerId: async (req: Request, res: Response) => {
 		const containerId = parseInt(req.params.id);
+		const user = req.user;
 		const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
 		const flattenedShipments = flattenShipment(container?.shipments);
 		if (container) container.shipments = flattenedShipments;

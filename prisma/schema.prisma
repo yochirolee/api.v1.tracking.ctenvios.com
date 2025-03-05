@@ -34,12 +34,11 @@ model User {
 model Agency {
   id Int @id @default(autoincrement())
   name String
-  aliases String[]
-  contact String
-  phone String
-  email String
-  address String
-  parent Int
+  contact String?
+  phone String?
+  email String?
+  address String?
+  parent Int @default(0)
   isActive Boolean @default(true)
   warehouses Warehouse[]
   shipments Shipment[]
@@ -82,6 +81,7 @@ model Shipment {
   agencyId Int?
   agency Agency? @relation(fields: [agencyId], references: [id])
   events ShipmentEvent[] 
+  weight Float?
   userId String
   user User @relation(fields: [userId], references: [id])
   @@index([hbl])

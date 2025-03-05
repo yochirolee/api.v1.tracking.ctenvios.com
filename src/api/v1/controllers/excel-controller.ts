@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import XLSX from "xlsx";
 import supabase from "../config/supabase-client";
 import { mysql_db } from "../models/myslq/mysql_db";
+import { create } from "domain";
 
 type ExcelRow = {
 	HBL: string;
@@ -10,6 +11,14 @@ type ExcelRow = {
 	F_SALIDA: Date;
 	F_ENTREGA: Date;
 };
+
+interface UpsertResult {
+	succeeded: any[];
+	failed: Array<{
+		event: any;
+		error: string;
+	}>;
+}
 
 export const excelController = {
 	uploadExcel: async (req: Request, res: Response, next: NextFunction) => {
@@ -25,8 +34,7 @@ export const excelController = {
 
 			const workbook = XLSX.read(file.buffer, { type: "buffer" });
 			const allSheetsData = await processAllSheets(workbook, userId);
-			console.log(allSheetsData);
-			res.status(200).json(allSheetsData);
+			res.json(allSheetsData);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({
@@ -56,20 +64,9 @@ const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: 
 	const rawData = XLSX.utils.sheet_to_json(currentSheet);
 
 	const filteredData = processRawData(rawData as ExcelRow[]);
-	const uniqueHbls = [...new Set(filteredData.map((row) => row.hbl))];
-	const mysql_data = await mysql_db.parcels.getInHblArray(uniqueHbls);
-
-	//const upsertData = createUpsertData(filteredData, mysql_data, userId);
-	//const { shipments, events } = await upsertShipmentsAndEvents(upsertData);
-
-	return {
-		[sheetName]: {
-			sheetName,
-			shipments: rawData,
-			error: null,
-			eventsError: null,
-		},
-	};
+	const eventData = filteredData.map((row) => createEventData(row, userId));
+	const upsertedEvents = await upsertEvents(eventData);
+	return upsertedEvents;
 };
 
 const processRawData = (rawData: ExcelRow[]) => {
@@ -81,68 +78,81 @@ const processRawData = (rawData: ExcelRow[]) => {
 	}));
 };
 
-const createUpsertData = (filteredData: any[], mysql_data: any[], userId: string) => {
-	// Create a map to store the latest entry for each HBL
-	const hblMap = new Map();
+const getShipmentStatus = (row: any) => {
+	if (row.F_ENTREGA)
+		return {
+			statusId: 10,
+			timestamp: row.F_ENTREGA,
+		};
+	if (row.F_SALIDA)
+		return {
+			statusId: 6,
+			timestamp: row.F_SALIDA,
+		};
+	if (row.F_AFORO)
+		return {
+			statusId: 5,
+			timestamp: row.F_AFORO,
+		};
+	return {
+		statusId: 5,
+		timestamp: row.F_AFORO,
+	};
+};
 
-	filteredData.forEach((row) => {
-		const matchingData = mysql_data.find((data) => row.hbl === data.hbl);
-		if (!matchingData) return;
+const upsertEvents = async (eventsToUpsert: any[]): Promise<UpsertResult> => {
+	const result: UpsertResult = {
+		succeeded: [],
+		failed: [],
+	};
 
-		const timestamp = row.F_ENTREGA || row.F_SALIDA || row.F_AFORO || new Date();
-		const existingEntry = hblMap.get(matchingData.hbl);
+	// Process events in smaller batches to handle partial failures
+	const batchSize = 50;
+	for (let i = 0; i < eventsToUpsert.length; i += batchSize) {
+		const batch = eventsToUpsert.slice(i, i + batchSize);
 
-		// Only update the map if this entry is newer or there's no existing entry
-		if (!existingEntry || timestamp > existingEntry.timestamp) {
-			hblMap.set(matchingData.hbl, {
-				hbl: matchingData.hbl,
-				timestamp: timestamp,
-				statusId: getShipmentStatus(row),
-				userId: userId,
-				updateMethod: UpdateMethod.EXCEL_FILE,
-				invoiceId: matchingData.invoiceId,
+		try {
+			const { data, error } = await supabase.from("ShipmentEvent").upsert(batch, {
+				onConflict: "hbl,statusId",
+				returning: "minimal",
+			});
+
+			if (data) {
+				result.succeeded.push(...data);
+			}
+
+			if (error) {
+				batch.forEach((event) => {
+					result.failed.push({
+						event,
+						error: error.message,
+					});
+				});
+			}
+		} catch (error) {
+			batch.forEach((event) => {
+				result.failed.push({
+					event,
+					error: error instanceof Error ? error.message : "Unknown error",
+				});
 			});
 		}
-	});
-
-	// Convert map values back to array
-	return Array.from(hblMap.values());
-};
-
-const getShipmentStatus = (row: any) => {
-	if (row.F_ENTREGA) return 11;
-	if (row.F_SALIDA) return 10;
-	if (row.F_AFORO) return 9;
-	return 1;
-};
-
-const upsertShipmentsAndEvents = async (upsertData: any[]) => {
-	const { data: shipments, error } = await supabase
-		.from("Shipment")
-		.upsert(upsertData, { onConflict: "hbl" });
-
-	if (error) {
-		throw new Error(`Error upserting shipments: ${error.message}`);
 	}
-
-	const eventsToUpsert = upsertData.map(createEventData);
-	const { data: events, error: eventsError } = await supabase
-		.from("ShipmentEvent")
-		.upsert(eventsToUpsert, { onConflict: "hbl,locationId,status" });
-	if (eventsError) {
-		throw new Error(`Error upserting events: ${eventsError.message}`);
-	}
-	return { shipments, events };
+	console.log(result);
+	return result;
 };
 
-const createEventData = (row: any) => ({
-	hbl: row.hbl,
-	statusId: row.statusId,
-	timestamp: row.timestamp,
-	userId: row.userId,
-	updateMethod: row.updateMethod,
-	description: "Excel file upload",
-});
+const createEventData = (row: any, userId: string) => {
+	const status = getShipmentStatus(row);
+	if (!status) return null;
+	return {
+		hbl: row.hbl,
+		statusId: status.statusId,
+		timestamp: status.timestamp,
+		userId: userId,
+		updateMethod: "EXCEL_FILE",
+	};
+};
 
 // Helper function to convert Excel date to ISO string
 const excelDateToISO = (excelDate: any): Date | null => {

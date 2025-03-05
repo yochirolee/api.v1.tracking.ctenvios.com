@@ -7,20 +7,20 @@ import { formatSearchResult, flattenShipment } from "../utils/_format_response";
 import { Shipment, UpdateMethod } from "@prisma/client";
 import { getLocation } from "../utils/_getLocation";
 
-
-
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
 		try {
 			//if user is admin, get all shipments
 			//if user is not admin, get shipments by agencyId
 			//implementation missing
+			const user = req.user;
 			const shipments = await prisma_db.shipments.getShipments({
 				limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
 			});
-			const flattenedShipments = flattenShipment(shipments);
-			res.json(flattenedShipments);
+
+			const flattenedShipments = flattenShipment(shipments.shipments);
+			res.json({ shipments: flattenedShipments, total: shipments.totalShipments });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
@@ -29,14 +29,19 @@ export const shipmentsController = {
 	searchShipments: async (req: Request, res: Response) => {
 		const search = req.query.query as string;
 
-		const search_on_mysql = await mysql_db.parcels.search(search);
-
-		//get all the hbl from the search
-		const hbls = search_on_mysql?.map((el) => el.hbl);
+		const [search_on_mysql, total] = await mysql_db.parcels.search(search);
+		if (!search_on_mysql.length) {
+			return res.json({ shipments: [], total: 0 });
+		}
+		// Extract HBLs directly using destructuring for better performance
+		const hbls = search_on_mysql.map(({ hbl }: { hbl: string }) => hbl);
 		const existingShipments = await prisma_db.shipments.getShipmentsByHbls(hbls);
 		const shipments = formatSearchResult(existingShipments, search_on_mysql);
 
-		res.json(shipments);
+		res.json({
+			shipments,
+			total,
+		});
 	},
 	getShipmentByHbl: async (req: Request, res: Response) => {
 		const hbl = req.params.hbl;
@@ -188,7 +193,7 @@ export const shipmentsController = {
 			if (!statusId) {
 				return res.status(400).json({ message: "Status ID is required" });
 			}
-			const shipments = await prisma_db.shipments.scannedShipments(userId,statusId);
+			const shipments = await prisma_db.shipments.scannedShipments(userId, statusId);
 			res.json(shipments);
 		} catch (error) {
 			console.error(error);

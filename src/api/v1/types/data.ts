@@ -83,7 +83,19 @@ export const agenciesSeedData: Agency[] = [
 	{
 		id: 2,
 		name: "Caribe Travel Express",
-		aliases: ["CTE"],
+		contact: "Francisco Infanzon",
+		phone: "3058513004",
+		email: "gerencia@agencia.com",
+		address: "10230 NW 80th Ave. Hialeah Gardens",
+		parent: 0,
+		isActive: true,
+	},
+];
+/* export const agenciesSeedData: Agency[] = [
+	{
+		id: 2,
+		name: "Caribe Travel Express",
+		
 		contact: "Francisco Infanzon",
 		phone: "3058513004",
 		email: "gerencia@agencia.com",
@@ -94,7 +106,6 @@ export const agenciesSeedData: Agency[] = [
 	{
 		id: 120,
 		name: "Continental Package Delivery",
-		aliases: ["CPD"],
 		contact: "Ariel Lopez",
 		phone: "3054563525",
 		email: "travelamerica2015@yahoo.com",
@@ -105,7 +116,6 @@ export const agenciesSeedData: Agency[] = [
 	{
 		id: 121,
 		name: "Bello Caribe Travel",
-		aliases: ["BLLO C"],
 		contact: "Katherine Padron",
 		phone: "786 464 0647",
 		email: "info@bellocaribetravel.com",
@@ -116,7 +126,6 @@ export const agenciesSeedData: Agency[] = [
 	{
 		id: 137,
 		name: "Hegnaxin International",
-		aliases: ["HJC"],
 		contact: "Juan Carlos",
 		phone: "7865364659",
 		email: "jciglesias@caribbeagtm.com",
@@ -1169,7 +1178,7 @@ export const agenciesSeedData: Agency[] = [
 		parent: 2,
 		isActive: true,
 	},
-] as const;
+] as const; */
 export const statusSeedData: Status[] = [
 	{
 		id: 1,

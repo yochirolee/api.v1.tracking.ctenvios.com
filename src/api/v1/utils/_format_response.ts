@@ -1,14 +1,13 @@
 import { Shipment, ShipmentEvent, Status } from "@prisma/client";
 import { generateMySqlEvents } from "./_generate_sql_events";
 import { toCamelCase } from "./_to_camel_case";
-import { Code128Reader } from "@zxing/library";
-
 interface MySqlParcel {
 	containerDate?: string;
 	containerName?: string;
 	palletDate?: string;
 	palletId?: string;
 	agency?: string;
+	agencyId?: number;
 	dispatchDate?: string;
 	dispatchId?: string;
 	dispatchStatus?: number;
@@ -21,6 +20,8 @@ interface MySqlParcel {
 	province: string;
 	city: string;
 	state: string;
+	containerId: number;
+	weight?: number;
 }
 
 // Add return type interface
@@ -78,58 +79,43 @@ interface FlattenedShipment {
 		},
 	];
 }
+const formatSearchResult = (shipments: any | [], parcels: MySqlParcel[]) => {
+	const formattedShipments = parcels.map((parcel) => {
+		const flattenedShipment = flattenShipment(shipments).find(
+			(shipment: FlattenedShipment) => shipment?.hbl === parcel.hbl,
+		);
+		let mysql_events: any[] = [];
+		if (!flattenedShipment) {
+			mysql_events = generateMySqlEvents(parcel);
+		}
 
-const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): FormattedParcel[] => {
-	// Create both maps in a single pass through shipments
-	const shipmentMap = new Map<string, Shipment>();
-	shipments.forEach((shipment) => shipmentMap.set(shipment.hbl, shipment));
-
-	// Create a Set of HBLs with shipments for faster lookups
-	const hblsWithShipments = new Set(shipmentMap.keys());
-
-	// Pre-calculate all events in a single pass
-	const lastEventMap = new Map<string, any>();
-	const parcelEvents = parcels
-		.filter((parcel) => !hblsWithShipments.has(parcel.hbl))
-		.map((parcel) => ({
-			hbl: parcel.hbl,
-			events: generateMySqlEvents(parcel),
-		}));
-
-	parcelEvents.forEach(({ hbl, events }) => {
-		lastEventMap.set(hbl, events[events.length - 1]);
-	});
-
-	// Process parcels with memoized data
-	return parcels.map((parcel): FormattedParcel => {
-		const baseParcel = {
+		return {
 			hbl: parcel.hbl,
 			invoiceId: parcel.invoiceId,
-			agency: parcel.agency ? toCamelCase(parcel.agency) : undefined,
-			invoiceDate: parcel.invoiceDate,
-			description: toCamelCase(parcel.description),
 			sender: toCamelCase(parcel.sender),
 			receiver: toCamelCase(parcel.receiver),
+			description: toCamelCase(parcel.description),
 			state: toCamelCase(parcel.state),
 			city: toCamelCase(parcel.city),
+			containerId: parcel.containerId,
+			agencyId: parcel.agencyId,
+			agency: parcel.agency,
+			weight: parcel?.weight,
+			status: flattenedShipment?.status
+				? flattenedShipment?.status
+				: mysql_events[mysql_events.length - 1]?.status?.name,
+			status_code: flattenedShipment?.status_code
+				? flattenedShipment?.status_code
+				: mysql_events[mysql_events.length - 1]?.status?.code,
+			status_description: flattenedShipment?.status_description
+				? flattenedShipment?.status_description
+				: mysql_events[mysql_events.length - 1]?.status?.description,
+			timestamp: flattenedShipment?.timestamp || mysql_events[mysql_events.length - 1]?.timestamp,
 		};
-
-		const shipment = shipmentMap.get(parcel.hbl);
-
-		return shipment
-			? {
-					...baseParcel,
-			  }
-			: {
-					...baseParcel,
-					timestamp: lastEventMap.get(parcel.hbl)?.timestamp,
-					status: lastEventMap.get(parcel.hbl)?.status,
-					updateMethod: lastEventMap.get(parcel.hbl)?.updateMethod,
-					location: lastEventMap.get(parcel.hbl)?.location,
-					user: lastEventMap.get(parcel.hbl)?.user,
-			  };
 	});
+	return formattedShipments;
 };
+
 
 const flattenShipment = (shipments: any | []) => {
 	//if is array, return array of flattened shipments
@@ -140,10 +126,13 @@ const flattenShipment = (shipments: any | []) => {
 		return shipments.map((shipment) => {
 			return {
 				...shipment,
-				agency: shipment?.agency.name,
-				status: shipment?.events[0].status ? shipment.events[0].status.name : undefined,
-				status_code: shipment?.events[0].status ? shipment.events[0].status.code : undefined,
-				timestamp: shipment?.events[0].timestamp,
+				agency: shipment?.agency?.name,
+				status: shipment?.events[0]?.status ? shipment?.events[0]?.status?.name : undefined,
+				status_code: shipment?.events[0]?.status ? shipment?.events[0]?.status?.code : undefined,
+				status_description: shipment?.events[0]?.status
+					? shipment?.events[0]?.status?.description
+					: undefined,
+				timestamp: shipment?.events[0]?.timestamp,
 				events: undefined,
 			};
 		});
@@ -154,6 +143,9 @@ const flattenShipment = (shipments: any | []) => {
 		agency: shipments?.agency.name,
 		status: shipments?.events[0].status ? shipments.events[0].status.name : undefined,
 		status_code: shipments?.events[0].status ? shipments.events[0].status.code : undefined,
+		status_description: shipments?.events[0].status
+			? shipments.events[0].status.description
+			: undefined,
 		timestamp: shipments?.events[0].timestamp,
 		events: undefined,
 	};
