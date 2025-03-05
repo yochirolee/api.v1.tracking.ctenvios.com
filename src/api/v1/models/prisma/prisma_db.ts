@@ -257,7 +257,7 @@ export const prisma_db = {
 			return "ok";
 		},
 
-		scannedShipments: async (userId: string) => {
+		scannedShipments: async (userId: string, statusId: number) => {
 			const shipments = await prisma.shipment.findMany({
 				select: {
 					hbl: true,
@@ -284,7 +284,7 @@ export const prisma_db = {
 								},
 							},
 						},
-						where: { userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
+						where: { userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) }, statusId },
 					},
 				},
 			});

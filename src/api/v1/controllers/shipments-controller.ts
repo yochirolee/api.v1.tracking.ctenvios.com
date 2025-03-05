@@ -188,7 +188,7 @@ export const shipmentsController = {
 			if (!statusId) {
 				return res.status(400).json({ message: "Status ID is required" });
 			}
-			const shipments = await prisma_db.shipments.scannedShipments(userId);
+			const shipments = await prisma_db.shipments.scannedShipments(userId,statusId);
 			res.json(shipments);
 		} catch (error) {
 			console.error(error);
