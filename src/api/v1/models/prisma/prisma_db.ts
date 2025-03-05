@@ -181,7 +181,7 @@ export const prisma_db = {
 								},
 							},
 						},
-						orderBy: { timestamp: "asc" },
+						orderBy: { timestamp: "desc" },
 					},
 				},
 			});

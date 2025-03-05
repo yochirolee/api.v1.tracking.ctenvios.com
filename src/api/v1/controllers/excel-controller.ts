@@ -1,9 +1,8 @@
-import { Shipment, Status, UpdateMethod } from "@prisma/client";
+import { Shipment, ShipmentEvent, Status, UpdateMethod } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import XLSX from "xlsx";
 import supabase from "../config/supabase-client";
 import { mysql_db } from "../models/myslq/mysql_db";
-import { create } from "domain";
 
 type ExcelRow = {
 	HBL: string;
@@ -13,9 +12,14 @@ type ExcelRow = {
 };
 
 interface UpsertResult {
-	succeeded: any[];
+	succeeded: Array<{
+		sheetName: string;
+		count: number;
+		success: boolean;
+	}>;
 	failed: Array<{
-		event: any;
+		count: number;
+		sheetName: string;
 		error: string;
 	}>;
 }
@@ -34,14 +38,16 @@ export const excelController = {
 
 			const workbook = XLSX.read(file.buffer, { type: "buffer" });
 			const allSheetsData = await processAllSheets(workbook, userId);
-			res.json(allSheetsData);
+
+			// Return structured response
+			return res.status(200).json(allSheetsData);
 		} catch (error) {
-			console.error(error);
-			res.status(500).json({
+			console.error("Excel upload error:", error);
+			return res.status(500).json({
+				success: false,
 				error: "Error processing sheets",
-				message: error instanceof Error ? error.message : "Unknown error",
+				details: error instanceof Error ? error.message : "Unknown error",
 			});
-			next(error);
 		}
 	},
 };
@@ -52,25 +58,35 @@ const processAllSheets = async (workbook: XLSX.WorkBook, userId: string) => {
 		const results = await Promise.all(
 			workbook.SheetNames.map((sheetName) => processSheet(sheetName, workbook, userId)),
 		);
-		return Object.assign([], ...results);
+
+		// Combine all results into a single UpsertResult
+		return results;
 	} catch (error) {
-		console.error(error);
-		throw new Error(`Error processing sheets: ${error}`);
+		console.error("Process sheets error:", error);
+		throw new Error(
+			`Error processing sheets: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
 	}
 };
 
 const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: string) => {
 	const currentSheet = workbook.Sheets[sheetName];
 	const rawData = XLSX.utils.sheet_to_json(currentSheet);
+	//remove all rows with HBL null or empty
 
 	const filteredData = processRawData(rawData as ExcelRow[]);
-	const eventData = filteredData.map((row) => createEventData(row, userId));
-	const upsertedEvents = await upsertEvents(eventData);
+
+	const eventData = await Promise.all(filteredData.map((row) => createEventData(row, userId)));
+	const upsertedEvents = await upsertEvents(eventData as ShipmentEvent[], sheetName);
 	return upsertedEvents;
 };
 
 const processRawData = (rawData: ExcelRow[]) => {
-	return rawData.map((row) => ({
+	//remove all rows with HBL null or empty or F_AFORO null or empty
+	const filteredData = rawData.filter(
+		(row) => row.HBL && row.HBL !== "" && row.F_AFORO && row.F_AFORO !== null,
+	);
+	return filteredData.map((row) => ({
 		hbl: row.HBL,
 		F_AFORO: excelDateToISO(row.F_AFORO),
 		F_SALIDA: excelDateToISO(row.F_SALIDA),
@@ -95,62 +111,58 @@ const getShipmentStatus = (row: any) => {
 			timestamp: row.F_AFORO,
 		};
 	return {
-		statusId: 5,
-		timestamp: row.F_AFORO,
+		statusId: 4,
+		timestamp: null,
 	};
 };
 
-const upsertEvents = async (eventsToUpsert: any[]): Promise<UpsertResult> => {
-	const result: UpsertResult = {
-		succeeded: [],
-		failed: [],
-	};
+const upsertEvents = async (eventsToUpsert: ShipmentEvent[], sheetName: string) => {
+	try {
+		const { data, error } = await supabase.from("ShipmentEvent").upsert(eventsToUpsert, {
+			onConflict: "hbl,statusId",
+		});
 
-	// Process events in smaller batches to handle partial failures
-	const batchSize = 50;
-	for (let i = 0; i < eventsToUpsert.length; i += batchSize) {
-		const batch = eventsToUpsert.slice(i, i + batchSize);
-
-		try {
-			const { data, error } = await supabase.from("ShipmentEvent").upsert(batch, {
-				onConflict: "hbl,statusId",
-				returning: "minimal",
-			});
-
-			if (data) {
-				result.succeeded.push(...data);
-			}
-
-			if (error) {
-				batch.forEach((event) => {
-					result.failed.push({
-						event,
-						error: error.message,
-					});
-				});
-			}
-		} catch (error) {
-			batch.forEach((event) => {
-				result.failed.push({
-					event,
-					error: error instanceof Error ? error.message : "Unknown error",
-				});
-			});
+		if (data) {
+			return {
+				sheetName: sheetName,
+				count: data.length,
+				success: true,
+				error: null,
+			};
 		}
+
+		if (error) {
+			return {
+				sheetName: sheetName,
+				count: 0,
+				success: false,
+				error: error.message,
+			};
+		}
+	} catch (error) {
+		return {
+			sheetName: sheetName,
+			count: 0,
+			error: error instanceof Error ? error.message : "Unknown error",
+		};
 	}
-	console.log(result);
-	return result;
 };
 
-const createEventData = (row: any, userId: string) => {
+const createEventData = async (
+	row: any,
+	userId: string,
+): Promise<
+	Pick<ShipmentEvent, "hbl" | "statusId" | "timestamp" | "userId" | "updateMethod" | "locationId">
+> => {
 	const status = getShipmentStatus(row);
-	if (!status) return null;
+
 	return {
 		hbl: row.hbl,
 		statusId: status.statusId,
 		timestamp: status.timestamp,
 		userId: userId,
-		updateMethod: "EXCEL_FILE",
+		updateMethod: UpdateMethod.EXCEL_FILE,
+		locationId: null,
 	};
 };
 
