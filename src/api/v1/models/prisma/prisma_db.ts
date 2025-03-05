@@ -1,4 +1,4 @@
-import { Agency, Container, Location, User, ShipmentEvent } from "@prisma/client";
+import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
 export const prisma_db = {
@@ -231,40 +231,34 @@ export const prisma_db = {
 		},
 
 		scannedShipments: async (userId: string, statusId: number) => {
-			const shipments = await prisma.shipment.findMany({
-				select: {
-					hbl: true,
-					invoiceId: true,
-					description: true,
-					agency: {
-						select: {
-							name: true,
+			const twentyFourHoursAgo = new Date(new Date().setHours(new Date().getHours() - 1));
+
+			const shipments = await prisma.shipmentEvent.findMany({
+			
+					
+					where: {
+							userId,
+							timestamp: { gte: twentyFourHoursAgo },
+							statusId,
+							updateMethod: UpdateMethod.SCANNER,
 						},
-					},
-					events: {
 						select: {
 							timestamp: true,
 							status: {
 								select: {
 									name: true,
 								},
-							},
-							location: true,
-							user: {
-								select: {
-									id: true,
-									name: true,
-								},
+						},
+						location: true,
+						user: {
+							select: {
+								id: true,
+								name: true,
 							},
 						},
-						where: {
-							userId,
-							timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) },
-							statusId,
-						},
-					},
 				},
 			});
+
 			console.log(shipments);
 			return shipments;
 		},
