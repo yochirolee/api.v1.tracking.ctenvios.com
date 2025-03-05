@@ -59,3 +59,4 @@ export interface ShipmentFilters {
 	locations?: string[];
 	priority?: "HIGH" | "MEDIUM" | "LOW";
 }
+

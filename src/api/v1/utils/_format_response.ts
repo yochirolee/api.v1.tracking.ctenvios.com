@@ -1,5 +1,7 @@
+import { Shipment, ShipmentEvent, Status } from "@prisma/client";
 import { generateMySqlEvents } from "./_generate_sql_events";
 import { toCamelCase } from "./_to_camel_case";
+import { Code128Reader } from "@zxing/library";
 
 interface MySqlParcel {
 	containerDate?: string;
@@ -21,17 +23,6 @@ interface MySqlParcel {
 	state: string;
 }
 
-interface Shipment {
-	hbl: string;
-	status?: {
-		id: number;
-		name: string;
-	};
-	timestamp?: Date;
-	updateMethod?: string;
-	
-}
-
 // Add return type interface
 interface FormattedParcel {
 	hbl: string;
@@ -43,9 +34,49 @@ interface FormattedParcel {
 	receiver: string;
 	state: string;
 	city: string;
-	status?: string;
 	timestamp?: Date;
+	events?: ShipmentEvent[];
+	status?: [
+		{
+			id: number;
+			name: string;
+			code: string;
+			description: string;
+		},
+	];
 	updateMethod?: string;
+	location?: string;
+	user?: [
+		{
+			name: string;
+			id: string;
+		},
+	];
+}
+
+interface FlattenedShipment {
+	hbl: string;
+	invoiceId: number;
+	sender: string;
+	receiver: string;
+	description: string;
+	state: string;
+	city: string;
+	containerId: number;
+	agency: [
+		{
+			id: number;
+			name: string;
+		},
+	];
+	status: [
+		{
+			id: number;
+			code: string;
+			name: string;
+			description: string;
+		},
+	];
 }
 
 const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): FormattedParcel[] => {
@@ -74,9 +105,7 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): Form
 		const baseParcel = {
 			hbl: parcel.hbl,
 			invoiceId: parcel.invoiceId,
-			agency: {
-				name: parcel.agency,
-			},
+			agency: parcel.agency ? toCamelCase(parcel.agency) : undefined,
 			invoiceDate: parcel.invoiceDate,
 			description: toCamelCase(parcel.description),
 			sender: toCamelCase(parcel.sender),
@@ -90,15 +119,44 @@ const formatSearchResult = (shipments: Shipment[], parcels: MySqlParcel[]): Form
 		return shipment
 			? {
 					...baseParcel,
-					status: shipment.status,
-					timestamp: shipment.timestamp,
-					updateMethod: shipment.updateMethod,
 			  }
 			: {
 					...baseParcel,
-					...lastEventMap.get(parcel.hbl),
+					timestamp: lastEventMap.get(parcel.hbl)?.timestamp,
+					status: lastEventMap.get(parcel.hbl)?.status,
+					updateMethod: lastEventMap.get(parcel.hbl)?.updateMethod,
+					location: lastEventMap.get(parcel.hbl)?.location,
+					user: lastEventMap.get(parcel.hbl)?.user,
 			  };
 	});
 };
 
-export { formatSearchResult };
+const flattenShipment = (shipments: any | []) => {
+	//if is array, return array of flattened shipments
+	if (!shipments) {
+		return [];
+	}
+	if (Array.isArray(shipments)) {
+		return shipments.map((shipment) => {
+			return {
+				...shipment,
+				agency: shipment?.agency.name,
+				status: shipment?.events[0].status ? shipment.events[0].status.name : undefined,
+				status_code: shipment?.events[0].status ? shipment.events[0].status.code : undefined,
+				timestamp: shipment?.events[0].timestamp,
+				events: undefined,
+			};
+		});
+	}
+	//if is object, return flattened shipment
+	return {
+		...shipments,
+		agency: shipments?.agency.name,
+		status: shipments?.events[0].status ? shipments.events[0].status.name : undefined,
+		status_code: shipments?.events[0].status ? shipments.events[0].status.code : undefined,
+		timestamp: shipments?.events[0].timestamp,
+		events: undefined,
+	};
+};
+
+export { formatSearchResult, flattenShipment };

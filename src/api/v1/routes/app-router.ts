@@ -14,7 +14,6 @@ router.use("/shipments", shipmentsRoutes);
 router.use("/users", usersRoutes);
 router.use("/stats", statsRouter);
 router.use("/containers", containerRoutes);
-router.use("/issues", issuesRouter);
 router.use("/excel", excelRoutes);
 router.use("/agencies", agenciesRoutes);
 

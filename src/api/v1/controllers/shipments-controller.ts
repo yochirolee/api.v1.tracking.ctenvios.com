@@ -3,9 +3,11 @@ import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
-import { formatSearchResult } from "../utils/_format_search";
+import { formatSearchResult, flattenShipment } from "../utils/_format_response";
 import { Shipment, UpdateMethod } from "@prisma/client";
 import { getLocation } from "../utils/_getLocation";
+
+
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
@@ -17,10 +19,8 @@ export const shipmentsController = {
 				limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
 			});
-			/* const hbls = existingShipments.map((el) => el.hbl);
-			const search_on_mysql = await mysql_db.parcels.getInHblArray(hbls, true);
-			const shipments = formatSearchResult(existingShipments, search_on_mysql);
-		 */ res.json(shipments);
+			const flattenedShipments = flattenShipment(shipments);
+			res.json(flattenedShipments);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
@@ -49,20 +49,6 @@ export const shipmentsController = {
 		]);
 
 		//merge issues and events
-		const issues = shipment?.issues;
-		const events = shipment?.events;
-		const mergedIssues = [
-			...(issues?.map((issue) => ({
-				id: issue.id,
-				status: {
-					name: issue.title,
-					description: issue.description,
-				},
-				timestamp: issue.timestamp,
-				user: issue.user,
-			})) || []),
-			...(events || []),
-		].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
 		const mslq_parcel = search_on_mysql[0];
 		const mysql_events = generateMySqlEvents(mslq_parcel);
@@ -99,7 +85,7 @@ export const shipmentsController = {
 				state: mslq_parcel.province,
 				city: mslq_parcel.city,
 			},
-			events: [...mysql_events, ...(mergedIssues || [])],
+			events: [...mysql_events, ...(shipment?.events || [])],
 		};
 		res.json(shipment_with_mysql);
 	},
@@ -177,19 +163,19 @@ export const shipmentsController = {
 			locationData.country_code = location?.address?.country_code;
 			locationData.updatedAt = new Date();
 
-			const shipmentData = {
+			const eventData = {
 				hbl,
-				statusId,
 				userId,
 				updateMethod: UpdateMethod.SCANNER,
 				timestamp: new Date(timestamp),
+				statusId,
 			};
 
-			const shipment = await prisma_db.shipments.scanShipmentTransaction(
-				shipmentData,
+			/* 	const shipment = await prisma_db.shipments.scanShipmentTransaction(
+				eventData,
 				locationData,
-			);
-			res.json(shipment);
+			); */
+			res.json("ok");
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
@@ -202,7 +188,7 @@ export const shipmentsController = {
 			if (!statusId) {
 				return res.status(400).json({ message: "Status ID is required" });
 			}
-			const shipments = await prisma_db.shipments.scannedShipments(statusId, userId);
+			const shipments = await prisma_db.shipments.scannedShipments(userId);
 			res.json(shipments);
 		} catch (error) {
 			console.error(error);

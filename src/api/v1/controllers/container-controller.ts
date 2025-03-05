@@ -6,7 +6,7 @@ import { prisma_db } from "../models/prisma/prisma_db";
 import { supabase_db } from "../models/supabase/supabase_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { z } from "zod";
-
+import { flattenShipment } from "../utils/_format_response";
 const containerToPortSchema = z.object({
 	containerId: z.number(),
 	timestamp: z.string(),
@@ -128,9 +128,9 @@ export const containerController = {
 				sender: toCamelCase(parcel.sender),
 				agencyId: parcel.agencyId,
 				description: toCamelCase(parcel.description),
-				statusId: 4,
+
 				userId: userId.toString(),
-				timestamp: new Date(timestamp),
+
 				state: parcel.province,
 				city: parcel.city,
 				updateMethod: UpdateMethod.SYSTEM,
@@ -150,11 +150,19 @@ export const containerController = {
 				return res.status(404).json({ message: "No shipments were created or updated" });
 			}
 
+			const fulltimestamp = new Date(
+				new Date(timestamp).setHours(
+					new Date().getHours(),
+					new Date().getMinutes(),
+					new Date().getSeconds(),
+				),
+			).toISOString();
+
 			const shipmentsEvents = shipments.map((shipment) => ({
 				hbl: shipment.hbl,
-				statusId: shipment.statusId,
+				statusId: 4,
 				userId: shipment.userId,
-				timestamp: new Date(timestamp).toISOString(),
+				timestamp: fulltimestamp,
 			}));
 
 			const { data: eventsData, error: eventsError } = await supabase
@@ -200,7 +208,13 @@ export const containerController = {
 
 			const { containerId, timestamp, userId, statusId } = validatedInput.data;
 			console.log(containerId, timestamp, userId, statusId);
-
+			const fulltimestamp = new Date(
+				new Date(timestamp).setHours(
+					new Date().getHours(),
+					new Date().getMinutes(),
+					new Date().getSeconds(),
+				),
+			).toISOString();
 			const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
 			if (!container) {
 				return res.status(404).json({ message: "Container not found" });
@@ -212,32 +226,17 @@ export const containerController = {
 			}
 
 			//create shipment for update the staus
-			const shipmentsForUpdate = shipments.map((shipment) => ({
+
+			const shipmentEvents = shipments.map((shipment) => ({
 				hbl: shipment.hbl,
 				statusId: statusId,
-				timestamp: new Date(timestamp).toISOString(),
 				userId: userId,
-			}));
-			const { data: shipmentsData, error: shipmentsError } = await supabase
-				.from("Shipment")
-				.upsert(shipmentsForUpdate);
-
-			if (shipmentsError) {
-				throw new Error(`Error upserting shipment events: ${shipmentsError.message}`);
-			}
-
-			const shipmentEvents = shipmentsData.map((shipment) => ({
-				hbl: shipment.hbl,
-				statusId: shipment.statusId,
-				userId: shipment.userId,
-				timestamp: new Date(timestamp).toISOString(),
+				timestamp: fulltimestamp,
 			}));
 
-			const { data: eventsData, error: eventsError } = await supabase
-				.from("ShipmentEvent")
-				.upsert(shipmentEvents, {
-					onConflict: "hbl,statusId",
-				});
+			const { error: eventsError } = await supabase.from("ShipmentEvent").upsert(shipmentEvents, {
+				onConflict: "hbl,statusId",
+			});
 
 			if (eventsError) {
 				throw new Error(`Error upserting shipment events: ${eventsError.message}`);
@@ -253,11 +252,10 @@ export const containerController = {
 
 	getShipmentsByContainerId: async (req: Request, res: Response) => {
 		const containerId = parseInt(req.params.id);
-		const shipments = await prisma_db.containers.getContainerWithShipmentsById(containerId);
-		res.json(shipments);
+		const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
+		const flattenedShipments = flattenShipment(container?.shipments);
+		if (container) container.shipments = flattenedShipments;
+
+		res.json(container);
 	},
-	/* containersStats: async (req: Request, res: Response) => {
-		const stats = await prisma_db.containers.getContainersStats();
-		res.json(stats);
-	}, */
 };

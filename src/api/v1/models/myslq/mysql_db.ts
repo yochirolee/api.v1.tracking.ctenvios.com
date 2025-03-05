@@ -1,5 +1,5 @@
 import mysql_client from "../../config/mysql-client";
-import { formatSearchResult } from "../../utils/_format_search";
+import { formatSearchResult } from "../../utils/_format_response";
 export const mysql_db = {
 	containers: {
 		getById: async (id: number) => {

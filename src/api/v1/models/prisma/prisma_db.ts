@@ -1,13 +1,4 @@
-import {
-	Agency,
-	Container,
-	Location,
-	Issues,
-	Shipment,
-	User,
-	ShipmentEvent,
-	IssueComments,
-} from "@prisma/client";
+import { Agency, Container, Location, User, ShipmentEvent } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 
 export const prisma_db = {
@@ -73,22 +64,29 @@ export const prisma_db = {
 		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
 			const shipments = await prisma.shipment.findMany({
 				include: {
-					status: true,
 					agency: {
 						select: {
 							id: true,
 							name: true,
 						},
 					},
-					_count: {
+					events: {
 						select: {
-							issues: true,
+							timestamp: true,
+							status: true,
+							location: true,
+							user: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
 						},
+						orderBy: { timestamp: "asc" },
+						take: 1,
 					},
 				},
-				orderBy: {
-					timestamp: "desc",
-				},
+
 				take: limit,
 				skip: offset,
 			});
@@ -110,16 +108,24 @@ export const prisma_db = {
 					],
 				},
 				include: {
-					status: true,
 					agency: {
 						select: {
 							id: true,
 							name: true,
 						},
 					},
-				},
-				orderBy: {
-					timestamp: "desc",
+					events: {
+						select: {
+							timestamp: true,
+							status: {
+								select: {
+									name: true,
+								},
+							},
+						},
+						orderBy: { timestamp: "desc" },
+						take: 1,
+					},
 				},
 				take: limit,
 				skip: offset,
@@ -131,7 +137,6 @@ export const prisma_db = {
 			const shipment = await prisma.shipment.findUnique({
 				where: { hbl },
 				include: {
-					status: true,
 					events: {
 						include: {
 							status: true,
@@ -146,14 +151,25 @@ export const prisma_db = {
 						},
 						orderBy: { timestamp: "asc" },
 					},
-					issues: {
+				},
+			});
+			return shipment;
+		},
+		getShipmentsByHbls: async (hbls: string[]) => {
+			const shipments = await prisma.shipment.findMany({
+				where: { hbl: { in: hbls } },
+				include: {
+					agency: {
 						select: {
 							id: true,
-							title: true,
-							description: true,
-							type: true,
-							priority: true,
-							timestamp: true,
+							name: true,
+						},
+					},
+					events: {
+						include: {
+							status: true,
+							location: true,
+
 							user: {
 								select: {
 									id: true,
@@ -161,42 +177,8 @@ export const prisma_db = {
 								},
 							},
 						},
+						orderBy: { timestamp: "asc" },
 					},
-
-					location: {
-						select: {
-							country_code: true,
-							city: true,
-							state: true,
-							name: true,
-						},
-					},
-
-					user: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-				},
-			});
-
-			return shipment;
-		},
-		getShipmentsByHbls: async (hbls: string[]) => {
-			const shipments = await prisma.shipment.findMany({
-				where: { hbl: { in: hbls } },
-				include: {
-					status: true,
-					agency: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-				},
-				orderBy: {
-					timestamp: "desc",
 				},
 			});
 			return shipments;
@@ -236,7 +218,7 @@ export const prisma_db = {
 
 		//tx to update a shipment and the events
 		scanShipmentTransaction: async (
-			data: Partial<Shipment>,
+			data: Partial<ShipmentEvent>,
 			locationData: Omit<Location, "id">,
 		) => {
 			let location: Location | null = null;
@@ -252,55 +234,59 @@ export const prisma_db = {
 					create: locationData,
 				});
 			}
-			const shipment = await prisma.$transaction(async (tx) => {
-				const shipment = await tx.shipment.update({
-					where: { hbl: data.hbl },
-					data: {
+			/* const event = await prisma.$transaction(async (tx) => {
+				return await tx.shipmentEvent.upsert({
+					where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
+					update: {
+						hbl: data.hbl,
+						timestamp: data.timestamp,
 						statusId: data.statusId,
 						userId: data.userId,
 						updateMethod: data.updateMethod,
 						locationId: location?.id,
-						timestamp: data.timestamp,
-					},
-				});
-				await tx.shipmentEvent.upsert({
-					where: { hbl_statusId: { hbl: shipment.hbl, statusId: shipment.statusId } },
-					update: {
-						hbl: shipment.hbl,
-						timestamp: shipment.timestamp,
-						statusId: shipment.statusId,
-						userId: shipment.userId,
-						updateMethod: shipment.updateMethod,
-						locationId: shipment.locationId,
 					},
 					create: {
-						hbl: shipment.hbl,
-						timestamp: shipment.timestamp,
-						statusId: shipment.statusId,
-						userId: shipment.userId,
-						updateMethod: shipment.updateMethod,
-						locationId: shipment.locationId,
+						hbl: data.hbl,
+						statusId: data.statusId,
+						userId: data.userId,
+						updateMethod: data.updateMethod,
+						locationId: location?.id,
 					},
 				});
-				return shipment;
-			});
-			return shipment;
+			}); */
+			return "ok";
 		},
 
-		scannedShipments: async (statusId: number, userId: string) => {
+		scannedShipments: async (userId: string) => {
 			const shipments = await prisma.shipment.findMany({
 				select: {
 					hbl: true,
 					invoiceId: true,
 					description: true,
-					timestamp: true,
 					agency: {
 						select: {
 							name: true,
 						},
 					},
+					events: {
+						select: {
+							timestamp: true,
+							status: {
+								select: {
+									name: true,
+								},
+							},
+							location: true,
+							user: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+						where: { userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
+					},
 				},
-				where: { statusId, userId, timestamp: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
 			});
 			console.log(shipments);
 			return shipments;
@@ -350,7 +336,21 @@ export const prisma_db = {
 				include: {
 					shipments: {
 						include: {
-							status: true,
+							events: {
+								select: {
+									status: true,
+									location: true,
+									user: {
+										select: {
+											id: true,
+											name: true,
+											
+										},
+									},
+								},
+								orderBy: { timestamp: "desc" },
+								take: 1,
+							},
 							agency: {
 								select: {
 									id: true,
@@ -443,7 +443,7 @@ export const prisma_db = {
 			return agency;
 		},
 	},
-	issues: {
+	/* 	issues: {
 		getIssues: async ({ limit = 10, page = 1 }: { limit?: number; page?: number } = {}) => {
 			const issues = await prisma.issues.findMany({
 				include: {
@@ -596,7 +596,7 @@ export const prisma_db = {
 			const issueComment = await prisma.issueComments.delete({ where: { id } });
 			return issueComment;
 		},
-	},
+	}, */
 
 	locations: {
 		upsertLocation: async (data: Location) => {
