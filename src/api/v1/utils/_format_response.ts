@@ -116,7 +116,6 @@ const formatSearchResult = (shipments: any | [], parcels: MySqlParcel[]) => {
 	return formattedShipments;
 };
 
-
 const flattenShipment = (shipments: any | []) => {
 	//if is array, return array of flattened shipments
 	if (!shipments) {
@@ -150,5 +149,26 @@ const flattenShipment = (shipments: any | []) => {
 		events: undefined,
 	};
 };
+const flattenEventsAsShipments = (events: any | []) => {
+	return events.map((event: any) => {
+		return {
+			hbl: event.hbl,
+			invoiceId: event.shipment.invoiceId,
+			description: event.shipment.description,
+			status: event.status.name,
+			status_code: event.status.code,
+			status_description: event.status.description,
+			timestamp: event.timestamp,
+			agency: event.shipment.agency?.name,
+			sender: event.shipment.sender,
+			receiver: event.shipment.receiver,
+			weight: event.shipment.weight,
+			city: event.shipment.city,
+			state: event.shipment.state,
 
-export { formatSearchResult, flattenShipment };
+			user: event.user.name,
+		};
+	});
+};
+
+export { formatSearchResult, flattenShipment, flattenEventsAsShipments };

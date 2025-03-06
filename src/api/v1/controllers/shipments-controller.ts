@@ -3,8 +3,8 @@ import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
-import { formatSearchResult, flattenShipment } from "../utils/_format_response";
-import { Shipment, UpdateMethod } from "@prisma/client";
+import { formatSearchResult } from "../utils/_format_response";
+import { UpdateMethod } from "@prisma/client";
 import { getLocation } from "../utils/_getLocation";
 
 export const shipmentsController = {
@@ -19,8 +19,9 @@ export const shipmentsController = {
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
 			});
 
-			const flattenedShipments = flattenShipment(shipments.shipments);
-			res.json({ shipments: flattenedShipments, total: shipments.totalShipments });
+			
+
+			res.json({ shipments: shipments.flattenedEventsAsShipments, total: shipments.totalShipments });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });

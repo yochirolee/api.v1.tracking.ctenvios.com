@@ -1,5 +1,6 @@
 import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
+import { flattenEventsAsShipments } from "../../utils/_format_response";
 
 export const prisma_db = {
 	users: {
@@ -63,43 +64,48 @@ export const prisma_db = {
 	shipments: {
 		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
 			const [shipments, totalShipments] = await Promise.all([
-				prisma.shipment.findMany({
-					include: {
-						agency: {
+				prisma.shipmentEvent.findMany({
+					select: {
+						hbl: true,
+						status: true,
+						location: true,
+						timestamp: true,
+						user: {
 							select: {
 								id: true,
 								name: true,
 							},
 						},
-						events: {
+						shipment: {
 							select: {
-								timestamp: true,
-								status: true,
-								location: true,
-								user: {
+								invoiceId: true,
+								description: true,
+								sender: true,
+								receiver: true,
+								weight: true,
+								city: true,
+								state: true,
+								agency: {
 									select: {
-										id: true,
 										name: true,
 									},
 								},
 							},
-							orderBy: { timestamp: "desc" },
-							take: 1,
 						},
 					},
+					orderBy: { timestamp: "desc" },
 					take: limit,
 					skip: offset,
 				}),
 				prisma.shipment.count(),
 			]);
-
-			return { shipments, totalShipments };
+			const flattenedEventsAsShipments = flattenEventsAsShipments(shipments);
+			return { flattenedEventsAsShipments, totalShipments };
 		},
 
 		//search shipments by hbl or invoiceId or description or sender or receiver
 		//if better to implement a full text search, we can use a library like pg_search
 
-		
 		getShipmentByHbl: async (hbl: string) => {
 			const shipment = await prisma.shipment.findUnique({
 				where: { hbl },
@@ -268,7 +274,7 @@ export const prisma_db = {
 			});
 		},
 	},
-	
+
 	containers: {
 		getContainerWithShipmentsById: async (id: number) => {
 			const container = await prisma.container.findUnique({
@@ -319,7 +325,6 @@ export const prisma_db = {
 			const container = await prisma.container.delete({ where: { id } });
 			return container;
 		},
-		
 	},
 	agencies: {
 		getAgencies: async () => {
