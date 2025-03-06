@@ -174,12 +174,13 @@ export const shipmentsController = {
 				updateMethod: UpdateMethod.SCANNER,
 				timestamp: new Date(timestamp),
 				statusId,
+				locationId: location?.id || null,
 			};
 
-			/* 	const shipment = await prisma_db.shipments.scanShipmentTransaction(
+				const shipment = await prisma_db.shipments.scanShipmentTransaction(
 				eventData,
 				locationData,
-			); */
+			); 
 			res.json("ok");
 		} catch (error) {
 			console.error(error);

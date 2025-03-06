@@ -191,7 +191,7 @@ export const prisma_db = {
 
 		//tx to update a shipment and the events
 		scanShipmentTransaction: async (
-			data: Partial<ShipmentEvent>,
+			data: Pick<ShipmentEvent, "hbl" | "statusId" | "userId" | "locationId" | "timestamp">,
 			locationData: Omit<Location, "id">,
 		) => {
 			let location: Location | null = null;
@@ -207,7 +207,7 @@ export const prisma_db = {
 					create: locationData,
 				});
 			}
-			/* const event = await prisma.$transaction(async (tx) => {
+			const event = await prisma.$transaction(async (tx) => {
 				return await tx.shipmentEvent.upsert({
 					where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
 					update: {
@@ -215,18 +215,19 @@ export const prisma_db = {
 						timestamp: data.timestamp,
 						statusId: data.statusId,
 						userId: data.userId,
-						updateMethod: data.updateMethod,
-						locationId: location?.id,
+						updateMethod: UpdateMethod.SCANNER,
+						locationId: location?.id || null,
 					},
 					create: {
 						hbl: data.hbl,
 						statusId: data.statusId,
 						userId: data.userId,
-						updateMethod: data.updateMethod,
-						locationId: location?.id,
+						updateMethod: UpdateMethod.SCANNER,
+						locationId: location?.id || null,
+						timestamp: data.timestamp,
 					},
 				});
-			}); */
+			});
 			return "ok";
 		},
 
@@ -234,32 +235,29 @@ export const prisma_db = {
 			const twentyFourHoursAgo = new Date(new Date().setHours(new Date().getHours() - 1));
 
 			const shipments = await prisma.shipmentEvent.findMany({
-			
-					
-					where: {
-							userId,
-							timestamp: { gte: twentyFourHoursAgo },
-							statusId,
-							updateMethod: UpdateMethod.SCANNER,
-						},
+				where: {
+					userId,
+					timestamp: { gte: twentyFourHoursAgo },
+					statusId,
+					updateMethod: UpdateMethod.SCANNER,
+				},
+				select: {
+					timestamp: true,
+					status: {
 						select: {
-							timestamp: true,
-							status: {
-								select: {
-									name: true,
-								},
+							name: true,
 						},
-						location: true,
-						user: {
-							select: {
-								id: true,
-								name: true,
-							},
+					},
+					location: true,
+					user: {
+						select: {
+							id: true,
+							name: true,
 						},
+					},
 				},
 			});
 
-			console.log(shipments);
 			return shipments;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {
