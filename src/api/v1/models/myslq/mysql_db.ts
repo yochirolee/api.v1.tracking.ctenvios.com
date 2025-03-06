@@ -141,7 +141,7 @@ export const mysql_db = {
 				},
 			};
 		},
-		search: async (searchTerm: string, limit = 15, page = 1) => {
+		search: async (searchTerm: string, limit = 50, page = 1) => {
 			try {
 				page = Math.max(1, page);
 				limit = Math.max(1, limit);

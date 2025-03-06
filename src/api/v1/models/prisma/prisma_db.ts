@@ -99,43 +99,7 @@ export const prisma_db = {
 		//search shipments by hbl or invoiceId or description or sender or receiver
 		//if better to implement a full text search, we can use a library like pg_search
 
-		searchShipments: async (search: string, limit = 30, offset = 0) => {
-			const shipments = await prisma.shipment.findMany({
-				where: {
-					OR: [
-						{ hbl: { equals: search } },
-						{ invoiceId: { equals: parseInt(search) } },
-						{ receiver: { contains: search, mode: "insensitive" } },
-						{ sender: { contains: search, mode: "insensitive" } },
-						{ description: { contains: search, mode: "insensitive" } },
-					],
-				},
-				include: {
-					agency: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-					events: {
-						select: {
-							timestamp: true,
-							status: {
-								select: {
-									name: true,
-								},
-							},
-						},
-						orderBy: { timestamp: "desc" },
-						take: 1,
-					},
-				},
-				take: limit,
-				skip: offset,
-			});
-
-			return shipments;
-		},
+		
 		getShipmentByHbl: async (hbl: string) => {
 			const shipment = await prisma.shipment.findUnique({
 				where: { hbl },
@@ -242,23 +206,39 @@ export const prisma_db = {
 					updateMethod: UpdateMethod.SCANNER,
 				},
 				select: {
+					hbl: true,
 					timestamp: true,
 					status: {
-						select: {
-							name: true,
-						},
-					},
-					location: true,
-					user: {
 						select: {
 							id: true,
 							name: true,
 						},
 					},
+					shipment: {
+						select: {
+							description: true,
+							invoiceId: true,
+							agency: {
+								select: {
+									name: true,
+								},
+							},
+						},
+					},
 				},
 			});
+			const shipmentWithEvent = shipments.map((shipment) => {
+				return {
+					hbl: shipment.hbl,
+					description: shipment.shipment.description,
+					status: shipment.status.name,
+					timestamp: shipment.timestamp,
+					invoiceId: shipment.shipment.invoiceId,
+					agency: shipment.shipment?.agency?.name,
+				};
+			});
 
-			return shipments;
+			return shipmentWithEvent;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {
 			const shipments = await prisma.shipment.findMany({
@@ -288,16 +268,7 @@ export const prisma_db = {
 			});
 		},
 	},
-	events: {
-		upsert: async (data: ShipmentEvent) => {
-			const event = await prisma.shipmentEvent.upsert({
-				where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
-				update: data,
-				create: data,
-			});
-			return event;
-		},
-	},
+	
 	containers: {
 		getContainerWithShipmentsById: async (id: number) => {
 			const container = await prisma.container.findUnique({
@@ -348,55 +319,7 @@ export const prisma_db = {
 			const container = await prisma.container.delete({ where: { id } });
 			return container;
 		},
-		/* 	getContainersStats: async () => {
-			const containers = await prisma.container.findMany({
-				include: {
-					shipments: {
-						include: {
-							status: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
-						},
-					},
-				},
-			});
-
-			const stats = containers.reduce(
-				(acc, container) => {
-					const statusCounts = container.shipments.reduce((statusAcc, shipment) => {
-						const status = shipment.status;
-						const key = status.id;
-						if (!statusAcc[key]) {
-							statusAcc[key] = {
-								count: 0,
-								name: status.name,
-							};
-						}
-						statusAcc[key].count++;
-						return statusAcc;
-					}, {} as Record<number, { count: number; name: string }>);
-
-					acc.push({
-						containerId: container.id,
-						containerNumber: container.containerNumber,
-						statusCounts,
-						totalShipments: container.shipments.length,
-					});
-					return acc;
-				},
-				[] as Array<{
-					containerId: number;
-					containerNumber: string;
-					statusCounts: Record<number, { count: number; name: string }>;
-					totalShipments: number;
-				}>,
-			);
-
-			return stats;
-		}, */
+		
 	},
 	agencies: {
 		getAgencies: async () => {
