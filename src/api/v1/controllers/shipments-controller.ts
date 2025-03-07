@@ -161,6 +161,7 @@ export const shipmentsController = {
 			};
 
 			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData, locationData);
+			console.log(shipment,"upseterted");
 			res.json("ok");
 		} catch (error) {
 			console.error(error);

@@ -1,5 +1,6 @@
 import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
+import supabase from "../../config/supabase-client";
 
 export const prisma_db = {
 	users: {
@@ -176,7 +177,7 @@ export const prisma_db = {
 				});
 			}
 
-			const result = await prisma.$transaction(async (tx) => {
+			/* const result = await prisma.$transaction(async (tx) => {
 				return await tx.shipmentEvent.upsert({
 					where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
 					update: {
@@ -196,19 +197,29 @@ export const prisma_db = {
 						timestamp: data.timestamp,
 					},
 				});
+			}); */
+			const { error } = await supabase.from("ShipmentEvent").upsert({
+				hbl: data.hbl,
+				statusId: data.statusId,
+				userId: data.userId,
+				updateMethod: UpdateMethod.SCANNER,
+				locationId: location?.id || null,
+				timestamp: data.timestamp,
 			});
-			console.log(result);
-			return "ok";
+			if (error) {
+				throw new Error(error.message);
+			}
 		},
 
 		scannedShipments: async (userId: string, statusId: number) => {
 			const twentyFourHoursAgo = new Date(new Date().setHours(new Date().getHours() - 12));
-
 			const shipments = await prisma.shipment.findMany({
 				where: {
 					userId,
-					timestamp: { gte: twentyFourHoursAgo },
 					statusId,
+					timestamp: {
+						gte: twentyFourHoursAgo,
+					},
 				},
 			});
 			console.log(shipments.length);
@@ -250,20 +261,13 @@ export const prisma_db = {
 				include: {
 					shipments: {
 						include: {
-							events: {
+							status: {
 								select: {
-									timestamp: true,
-									status: true,
-									location: true,
-									user: {
-										select: {
-											id: true,
-											name: true,
-										},
-									},
+									id: true,
+									name: true,
+									code: true,
+									description: true,
 								},
-								orderBy: { timestamp: "desc" },
-								take: 1,
 							},
 							agency: {
 								select: {

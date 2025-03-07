@@ -248,8 +248,10 @@ export const containerController = {
 	getShipmentsByContainerId: async (req: Request, res: Response) => {
 		const containerId = parseInt(req.params.id);
 		const container = await prisma_db.containers.getContainerWithShipmentsById(containerId);
-		const flattenedShipments = flattenShipments(container?.shipments);
-		if (container) container.shipments = flattenedShipments;
+		if (container) {
+			const flattenedShipments = flattenShipments(container?.shipments);
+			container.shipments = flattenedShipments;
+		}
 
 		res.json(container);
 	},
