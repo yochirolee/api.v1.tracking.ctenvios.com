@@ -1,6 +1,6 @@
 import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
-import supabase from "../../config/supabase-client";
+import { supabase_db } from "../supabase/supabase_db";
 
 export const prisma_db = {
 	users: {
@@ -177,35 +177,16 @@ export const prisma_db = {
 				});
 			}
 
-			/* const result = await prisma.$transaction(async (tx) => {
-				return await tx.shipmentEvent.upsert({
-					where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
-					update: {
-						hbl: data.hbl,
-						timestamp: data.timestamp,
-						statusId: data.statusId,
-						userId: data.userId,
-						updateMethod: UpdateMethod.SCANNER,
-						locationId: location?.id || null,
-					},
-					create: {
-						hbl: data.hbl,
-						statusId: data.statusId,
-						userId: data.userId,
-						updateMethod: UpdateMethod.SCANNER,
-						locationId: location?.id || null,
-						timestamp: data.timestamp,
-					},
-				});
-			}); */
-			const { error } = await supabase.from("ShipmentEvent").upsert({
-				hbl: data.hbl,
-				statusId: data.statusId,
-				userId: data.userId,
-				updateMethod: UpdateMethod.SCANNER,
-				locationId: location?.id || null,
-				timestamp: data.timestamp,
-			});
+			const { error } = await supabase_db.events.upsert([
+				{
+					hbl: data.hbl,
+					statusId: data.statusId,
+					userId: data.userId,
+					updateMethod: UpdateMethod.SCANNER,
+					locationId: location?.id || null,
+					timestamp: data.timestamp,
+				},
+			]);
 			if (error) {
 				throw new Error(error.message);
 			}
@@ -222,7 +203,6 @@ export const prisma_db = {
 					},
 				},
 			});
-			console.log(shipments.length);
 			return shipments;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {

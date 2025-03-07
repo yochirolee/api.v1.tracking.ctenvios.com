@@ -161,10 +161,11 @@ export const shipmentsController = {
 			};
 
 			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData, locationData);
-			console.log(shipment,"upseterted");
+
 			res.json("ok");
 		} catch (error) {
 			console.error(error);
+			console.log(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
 	},
