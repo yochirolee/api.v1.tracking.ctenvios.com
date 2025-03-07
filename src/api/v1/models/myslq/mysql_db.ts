@@ -282,7 +282,7 @@ export const mysql_db = {
 			const result = await mysql_client(
 				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
 			);
-			const agency= result.map((item:any)=>{
+			const agency = result.map((item: any) => {
 				return {
 					agency: toCamelCase(item.agency),
 					weight: item.weight,
@@ -292,7 +292,7 @@ export const mysql_db = {
 		},
 		getDailySalesByAgency: async (
 			agencyId: number = 2,
-			startDate: string = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+			startDate: string = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1))
 				.toISOString()
 				.split("T")[0],
 			endDate: string = new Date().toISOString().split("T")[0],
