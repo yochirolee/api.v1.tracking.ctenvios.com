@@ -17,6 +17,11 @@
 		{
 			"src": "/(.*)",
 			"dest": "/src/api/v1/server.ts"
+		},
+		{
+			"env": {
+				"TZ": "America/New_York"
+			}
 		}
 	]
 }
