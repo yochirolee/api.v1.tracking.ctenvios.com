@@ -81,7 +81,7 @@ interface FlattenedShipment {
 }
 const formatSearchResult = (shipments: any | [], parcels: MySqlParcel[]) => {
 	const formattedShipments = parcels.map((parcel) => {
-		const flattenedShipment = flattenShipment(shipments).find(
+		const flattenedShipment = flattenShipments(shipments).find(
 			(shipment: FlattenedShipment) => shipment?.hbl === parcel.hbl,
 		);
 		let mysql_events: any[] = [];
@@ -116,7 +116,7 @@ const formatSearchResult = (shipments: any | [], parcels: MySqlParcel[]) => {
 	return formattedShipments;
 };
 
-const flattenShipment = (shipments: any | []) => {
+/* const flattenShipment = (shipments: any | []) => {
 	//if is array, return array of flattened shipments
 	if (!shipments) {
 		return [];
@@ -139,36 +139,35 @@ const flattenShipment = (shipments: any | []) => {
 	//if is object, return flattened shipment
 	return {
 		...shipments,
-		agency: shipments?.agency.name,
-		status: shipments?.events[0].status ? shipments.events[0].status.name : undefined,
-		status_code: shipments?.events[0].status ? shipments.events[0].status.code : undefined,
-		status_description: shipments?.events[0].status
-			? shipments.events[0].status.description
+		agency: shipments?.agency?.name,
+		status: shipments?.events[0]?.status ? shipments?.events[0]?.status?.name : undefined,
+		status_code: shipments?.events[0]?.status ? shipments?.events[0]?.status?.code : undefined,
+		status_description: shipments?.events[0]?.status
+			? shipments?.events[0]?.status?.description
 			: undefined,
 		timestamp: shipments?.events[0].timestamp,
 		events: undefined,
 	};
-};
-const flattenEventsAsShipments = (events: any | []) => {
-	return events.map((event: any) => {
+}; */
+const flattenShipments = (shipments: any | []) => {
+	return shipments.map((shipment: any) => {
 		return {
-			hbl: event.hbl,
-			invoiceId: event.shipment.invoiceId,
-			description: event.shipment.description,
-			status: event.status.name,
-			status_code: event.status.code,
-			status_description: event.status.description,
-			timestamp: event.timestamp,
-			agency: event.shipment.agency?.name,
-			sender: event.shipment.sender,
-			receiver: event.shipment.receiver,
-			weight: event.shipment.weight,
-			city: event.shipment.city,
-			state: event.shipment.state,
-
-			user: event.user.name,
+			hbl: shipment?.hbl,
+			invoiceId: shipment?.invoiceId,
+			description: shipment?.description,
+			status: shipment?.status?.name,
+			status_code: shipment?.status?.code,
+			status_description: shipment?.status?.description,
+			timestamp: shipment?.timestamp,
+			agency: shipment?.agency?.name,
+			sender: shipment?.sender,
+			receiver: shipment?.receiver,
+			weight: shipment?.weight,
+			city: shipment?.city,
+			state: shipment?.state,
+		
 		};
 	});
 };
 
-export { formatSearchResult, flattenShipment, flattenEventsAsShipments };
+export { formatSearchResult, flattenShipments };

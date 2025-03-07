@@ -3,7 +3,7 @@ import { prisma_db } from "../models/prisma/prisma_db";
 import { mysql_db } from "../models/myslq/mysql_db";
 import { toCamelCase } from "../utils/_to_camel_case";
 import { generateMySqlEvents } from "../utils/_generate_sql_events";
-import { formatSearchResult } from "../utils/_format_response";
+import { flattenShipments, formatSearchResult } from "../utils/_format_response";
 import { UpdateMethod } from "@prisma/client";
 import { getLocation } from "../utils/_getLocation";
 
@@ -13,15 +13,14 @@ export const shipmentsController = {
 			//if user is admin, get all shipments
 			//if user is not admin, get shipments by agencyId
 			//implementation missing
-			const user = req.user;
+			//const user = req.user;
 			const shipments = await prisma_db.shipments.getShipments({
 				limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
 			});
 
-			
-
-			res.json({ shipments: shipments.flattenedEventsAsShipments, total: shipments.totalShipments });
+			const flattenedShipments = flattenShipments(shipments.shipments);
+			res.json({ shipments: flattenedShipments, total: shipments.totalShipments });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
@@ -134,23 +133,6 @@ export const shipmentsController = {
 				return res.status(400).json({ message: "All fields are required" });
 			}
 
-			/* 	const shipmentData = {
-				hbl,
-				invoiceId: null,
-				description: null,
-				containerId: null,
-				userId: userId,
-				agencyId: 0,
-				timestamp: timestamp,
-				state: null,
-				city: null,
-				sender: null,
-				receiver: null,
-				updateMethod: null,
-				statusId: statusId,
-				locationId: null,
-			}; */
-
 			const locationData = {
 				latitude: lat,
 				longitude: loc,
@@ -178,10 +160,7 @@ export const shipmentsController = {
 				locationId: location?.id || null,
 			};
 
-				const shipment = await prisma_db.shipments.scanShipmentTransaction(
-				eventData,
-				locationData,
-			); 
+			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData, locationData);
 			res.json("ok");
 		} catch (error) {
 			console.error(error);

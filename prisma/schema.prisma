@@ -75,6 +75,9 @@ model Shipment {
   sender String?
   receiver String?
   description String?
+  status Status @relation(fields: [statusId], references: [id])
+  statusId Int
+  timestamp DateTime  @db.Timestamptz()
   state String?
   city String?
   containerId Int?
@@ -87,20 +90,7 @@ model Shipment {
   @@index([hbl])
   
 }
-model Location {
-  id Int @id @default(autoincrement())
-  name String?
-  address String?
-  city String?
-  state String?
-  country_code String?
-  latitude Float 
-  longitude Float 
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz()
-  events ShipmentEvent[]
-  @@unique([latitude,longitude])
-}
+
 
 model ShipmentEvent {
   id Int @id @default(autoincrement())
@@ -117,6 +107,20 @@ model ShipmentEvent {
   images Images[]
   @@index([hbl,statusId] )
   @@unique([hbl,statusId])
+}
+model Location {
+  id Int @id @default(autoincrement())
+  name String?
+  address String?
+  city String?
+  state String?
+  country_code String?
+  latitude Float 
+  longitude Float 
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz()
+  events ShipmentEvent[]
+  @@unique([latitude,longitude])
 }
 
 enum UpdateMethod {
@@ -199,6 +203,7 @@ model Status {
   name String
   description String
   shipmentEvents ShipmentEvent[]
+  shipments Shipment[]
 }
 
 model Container {

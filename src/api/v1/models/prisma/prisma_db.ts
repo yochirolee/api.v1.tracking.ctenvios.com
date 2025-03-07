@@ -1,6 +1,5 @@
 import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
-import { flattenEventsAsShipments } from "../../utils/_format_response";
 
 export const prisma_db = {
 	users: {
@@ -64,32 +63,29 @@ export const prisma_db = {
 	shipments: {
 		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
 			const [shipments, totalShipments] = await Promise.all([
-				prisma.shipmentEvent.findMany({
+				prisma.shipment.findMany({
 					select: {
 						hbl: true,
-						status: true,
-						location: true,
+						invoiceId: true,
+						description: true,
+						state: true,
+						city: true,
+						sender: true,
+						receiver: true,
 						timestamp: true,
-						user: {
+						weight: true,
+						agency: {
 							select: {
 								id: true,
 								name: true,
 							},
 						},
-						shipment: {
+						status: {
 							select: {
-								invoiceId: true,
+								id: true,
+								name: true,
+								code: true,
 								description: true,
-								sender: true,
-								receiver: true,
-								weight: true,
-								city: true,
-								state: true,
-								agency: {
-									select: {
-										name: true,
-									},
-								},
 							},
 						},
 					},
@@ -99,8 +95,7 @@ export const prisma_db = {
 				}),
 				prisma.shipment.count(),
 			]);
-			const flattenedEventsAsShipments = flattenEventsAsShipments(shipments);
-			return { flattenedEventsAsShipments, totalShipments };
+			return { shipments, totalShipments };
 		},
 
 		//search shipments by hbl or invoiceId or description or sender or receiver
@@ -133,27 +128,30 @@ export const prisma_db = {
 				where: { hbl: { in: hbls } },
 				select: {
 					hbl: true,
+					invoiceId: true,
+					description: true,
+					state: true,
+					city: true,
+					sender: true,
+					receiver: true,
+					timestamp: true,
+					weight: true,
 					agency: {
 						select: {
 							id: true,
 							name: true,
 						},
 					},
-					events: {
-						include: {
-							status: true,
-							location: true,
-
-							user: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
+					status: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+							description: true,
 						},
-						orderBy: { timestamp: "desc" },
 					},
 				},
+				orderBy: { timestamp: "desc" },
 			});
 
 			return shipments;
@@ -177,7 +175,8 @@ export const prisma_db = {
 					create: locationData,
 				});
 			}
-			const event = await prisma.$transaction(async (tx) => {
+
+			const result = await prisma.$transaction(async (tx) => {
 				return await tx.shipmentEvent.upsert({
 					where: { hbl_statusId: { hbl: data.hbl, statusId: data.statusId } },
 					update: {
@@ -198,53 +197,22 @@ export const prisma_db = {
 					},
 				});
 			});
+			console.log(result);
 			return "ok";
 		},
 
 		scannedShipments: async (userId: string, statusId: number) => {
-			const twentyFourHoursAgo = new Date(new Date().setHours(new Date().getHours() - 1));
+			const twentyFourHoursAgo = new Date(new Date().setHours(new Date().getHours() - 12));
 
-			const shipments = await prisma.shipmentEvent.findMany({
+			const shipments = await prisma.shipment.findMany({
 				where: {
 					userId,
 					timestamp: { gte: twentyFourHoursAgo },
 					statusId,
-					updateMethod: UpdateMethod.SCANNER,
-				},
-				select: {
-					hbl: true,
-					timestamp: true,
-					status: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-					shipment: {
-						select: {
-							description: true,
-							invoiceId: true,
-							agency: {
-								select: {
-									name: true,
-								},
-							},
-						},
-					},
 				},
 			});
-			const shipmentWithEvent = shipments.map((shipment) => {
-				return {
-					hbl: shipment.hbl,
-					description: shipment.shipment.description,
-					status: shipment.status.name,
-					timestamp: shipment.timestamp,
-					invoiceId: shipment.shipment.invoiceId,
-					agency: shipment.shipment?.agency?.name,
-				};
-			});
-
-			return shipmentWithEvent;
+			console.log(shipments.length);
+			return shipments;
 		},
 		getShipmentsByInvoiceId: async (invoiceId: number) => {
 			const shipments = await prisma.shipment.findMany({
