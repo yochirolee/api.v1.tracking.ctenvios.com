@@ -229,10 +229,10 @@ export const containerController = {
 				timestamp: fulltimestamp,
 			}));
 
-			const { error: eventsError } = await supabase.from("ShipmentEvent").upsert(shipmentEvents, {
+			const {data: eventData, error: eventsError } = await supabase.from("ShipmentEvent").upsert(shipmentEvents, {
 				onConflict: "hbl,statusId",
 			});
-
+		
 			if (eventsError) {
 				throw new Error(`Error upserting shipment events: ${eventsError.message}`);
 			}

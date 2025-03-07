@@ -1,5 +1,6 @@
 import mysql_client from "../../config/mysql-client";
 import { formatSearchResult } from "../../utils/_format_response";
+import { toCamelCase } from "../../utils/_to_camel_case";
 export const mysql_db = {
 	containers: {
 		getById: async (id: number) => {
@@ -281,7 +282,13 @@ export const mysql_db = {
 			const result = await mysql_client(
 				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
 			);
-			return result;
+			const agency= result.map((item:any)=>{
+				return {
+					agency: toCamelCase(item.agency),
+					weight: item.weight,
+				};
+			});
+			return agency;
 		},
 		getDailySalesByAgency: async (
 			agencyId: number = 2,

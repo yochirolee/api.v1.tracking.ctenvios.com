@@ -1,6 +1,15 @@
-import { Agency, Container, Location, User, ShipmentEvent, UpdateMethod } from "@prisma/client";
+import {
+	Agency,
+	Container,
+	Location,
+	User,
+	ShipmentEvent,
+	UpdateMethod,
+	Shipment,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 import { supabase_db } from "../supabase/supabase_db";
+import e from "express";
 
 export const prisma_db = {
 	users: {
@@ -159,10 +168,7 @@ export const prisma_db = {
 		},
 
 		//tx to update a shipment and the events
-		scanShipmentTransaction: async (
-			data: Pick<ShipmentEvent, "hbl" | "statusId" | "userId" | "locationId" | "timestamp">,
-			locationData: Omit<Location, "id">,
-		) => {
+		scanShipmentTransaction: async (data: any[], locationData: Omit<Location, "id">) => {
 			let location: Location | null = null;
 			if (locationData.latitude && locationData.longitude) {
 				location = await prisma.location.upsert({
@@ -177,16 +183,10 @@ export const prisma_db = {
 				});
 			}
 
-			const { error } = await supabase_db.events.upsert([
-				{
-					hbl: data.hbl,
-					statusId: data.statusId,
-					userId: data.userId,
-					updateMethod: UpdateMethod.SCANNER,
-					locationId: location?.id || null,
-					timestamp: data.timestamp,
-				},
-			]);
+			const { data: supabaseData, error } = await supabase_db.events.upsert(data);
+			console.log(supabaseData, "eventData");
+			console.log(error, "eventsError");
+
 			if (error) {
 				throw new Error(error.message);
 			}
@@ -256,6 +256,8 @@ export const prisma_db = {
 								},
 							},
 						},
+						orderBy: { timestamp: "desc" },
+						
 					},
 				},
 			});

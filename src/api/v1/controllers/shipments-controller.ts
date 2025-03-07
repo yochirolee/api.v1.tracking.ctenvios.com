@@ -151,14 +151,16 @@ export const shipmentsController = {
 			locationData.country_code = location?.address?.country_code;
 			locationData.updatedAt = new Date();
 
-			const eventData = {
-				hbl,
-				userId,
-				updateMethod: UpdateMethod.SCANNER,
-				timestamp: new Date(timestamp),
-				statusId,
-				locationId: location?.id || null,
-			};
+			const eventData: any[] = [
+				{
+					hbl,
+					userId,
+					updateMethod: UpdateMethod.SCANNER,
+					timestamp: new Date(timestamp),
+					statusId,
+					locationId: location?.id || null,
+				},
+			];
 
 			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData, locationData);
 
