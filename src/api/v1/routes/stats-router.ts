@@ -20,5 +20,9 @@ statsRouter.get("/containers-status", async (req, res) => {
 	const containersStatus = await prisma_db.stats.containersStatus();
 	res.json(containersStatus);
 });
+statsRouter.get("/delivery-todays", async (req, res) => {
+	const deliveryTodays = await prisma_db.stats.deliveryTodays();
+	res.json(deliveryTodays);
+});
 
 export default statsRouter;

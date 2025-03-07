@@ -504,5 +504,30 @@ export const prisma_db = {
 			});
 			return formattedContainers;
 		},
+		deliveryTodays: async () => {
+			const today = new Date();
+			const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+			const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+			const deliveryTodays = await prisma.shipment.groupBy({
+				by: ["state"],
+				where: {
+					timestamp: {
+						gte: startOfDay,
+						lt: endOfDay,
+					},
+				},
+				_count: {
+					_all: true,
+				},
+				orderBy: {
+					state: "desc",
+				},
+			});
+
+			return deliveryTodays.map((item) => ({
+				name: item.state,
+				count: item._count._all,
+			}));
+		},
 	},
 };
