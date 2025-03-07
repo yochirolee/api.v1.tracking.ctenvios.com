@@ -298,8 +298,16 @@ export const mysql_db = {
 			endDate: string = new Date().toISOString().split("T")[0],
 		) => {
 			const result = await mysql_client(
-				"SELECT  fecha as date,  SUM(total+tarjeta_credito) AS sales FROM u373067935_cte.orden_envio WHERE orden_envio.agencia = ? AND fecha BETWEEN ? AND ? GROUP BY fecha ORDER BY fecha Asc;",
-				[agencyId, startDate, endDate],
+				`SELECT 
+					fecha as date,  
+					SUM(total + tarjeta_credito) AS sales 
+				FROM u373067935_cte.orden_envio 
+				WHERE orden_envio.agencia = ? 
+					AND fecha >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+					AND fecha < DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 1 MONTH), '%Y-%m-01')
+				GROUP BY fecha 
+				ORDER BY fecha ASC`,
+				[agencyId],
 			);
 			return result;
 		},
