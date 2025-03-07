@@ -257,7 +257,6 @@ export const prisma_db = {
 							},
 						},
 						orderBy: { timestamp: "desc" },
-
 					},
 				},
 			});
@@ -465,39 +464,41 @@ export const prisma_db = {
 		},
 	},
 	stats: {
-		containersStatus: async () => {const containers = await prisma.container.findMany({
-		select: {
-			id: true,
-			containerNumber: true,
-			shipments: {
+		containersStatus: async () => {
+			const containers = await prisma.container.findMany({
 				select: {
-					status: {
+					id: true,
+					containerNumber: true,
+					shipments: {
 						select: {
-							id: true,
-							name: true,
-							code: true,
+							status: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+								},
+							},
 						},
 					},
 				},
-			},
-		},
-		orderBy: { id: "desc" },
-		take: 6,
-	});
+				orderBy: { id: "desc" },
+				take: 6,
+			});
 
-	const formattedContainers = containers?.map((container) => {
-		const status: Record<string, number> = {};
+			const formattedContainers = containers?.map((container) => {
+				const status: Record<string, number> = {};
 
-		// Count occurrences of each status
-		container.shipments.forEach((shipment) => {
-			const statusName = shipment.status.name;
-			status[statusName] = (status[statusName] || 0) + 1;
-		});
+				// Count occurrences of each status
+				const statusCounts = container.shipments.reduce((acc: Record<string, number>, shipment) => {
+					const statusName = shipment.status.code;
+					acc[statusName] = (acc[statusName] || 0) + 1;
+					return acc;
+				}, {});
 
-		return {
-			id: container.id,
-			containerNumber: container.containerNumber,
-			status,
+				return {
+					id: container.id,
+					containerNumber: container.containerNumber,
+					status: statusCounts,
 					count: container.shipments.length,
 				};
 			});
