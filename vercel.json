@@ -10,8 +10,6 @@
 		}
 	],
 
-	"TZ": "America/New_York",
-
 	"routes": [
 		{
 			"src": "/api/v1/(.*)",
