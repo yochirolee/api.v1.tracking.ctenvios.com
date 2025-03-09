@@ -1,8 +1,8 @@
 import { Shipment, ShipmentEvent, Status, UpdateMethod } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import XLSX from "xlsx";
-import supabase from "../config/supabase-client";
-import { mysql_db } from "../models/myslq/mysql_db";
+
+import { supabase_db } from "../models/supabase/supabase_db";
 
 type ExcelRow = {
 	HBL: string;
@@ -10,19 +10,6 @@ type ExcelRow = {
 	F_SALIDA: Date;
 	F_ENTREGA: Date;
 };
-
-interface UpsertResult {
-	succeeded: Array<{
-		sheetName: string;
-		count: number;
-		success: boolean;
-	}>;
-	failed: Array<{
-		count: number;
-		sheetName: string;
-		error: string;
-	}>;
-}
 
 export const excelController = {
 	uploadExcel: async (req: Request, res: Response, next: NextFunction) => {
@@ -83,45 +70,48 @@ const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: 
 
 const processRawData = (rawData: ExcelRow[]) => {
 	//remove all rows with HBL null or empty or F_AFORO null or empty
-	const filteredData = rawData.filter(
-		(row) => row.HBL && row.HBL !== "" && row.F_AFORO && row.F_AFORO !== null,
-	);
-	return filteredData.map((row) => ({
-		hbl: row.HBL,
-		F_AFORO: excelDateToISO(row.F_AFORO),
-		F_SALIDA: excelDateToISO(row.F_SALIDA),
-		F_ENTREGA: excelDateToISO(row.F_ENTREGA),
-	}));
+	const filteredData = rawData.filter((row) => (row.HBL && row.HBL !== "") || row.HBL.length < 8);
+	return filteredData.map((row) => {
+		if (row.HBL.length > 8) {
+			return {
+				hbl: row.HBL,
+				F_AFORO: row.F_AFORO ? excelDateToISO(row.F_AFORO) : null,
+				F_SALIDA: row.F_SALIDA ? excelDateToISO(row.F_SALIDA) : null,
+				F_ENTREGA: row.F_ENTREGA ? excelDateToISO(row.F_ENTREGA) : null,
+			};
+		}
+		//remove null values
+	});
 };
 
 const getShipmentStatus = (row: any) => {
-	if (row.F_ENTREGA)
-		return {
-			statusId: 10,
-			timestamp: row.F_ENTREGA,
-		};
-	if (row.F_SALIDA)
-		return {
-			statusId: 6,
-			timestamp: row.F_SALIDA,
-		};
-	if (row.F_AFORO)
-		return {
-			statusId: 5,
-			timestamp: row.F_AFORO,
-		};
-	return {
-		statusId: 4,
-		timestamp: null,
-	};
+	switch (true) {
+		case row.F_ENTREGA:
+			return {
+				statusId: 10,
+				timestamp: row.F_ENTREGA,
+			};
+		case row.F_SALIDA:
+			return {
+				statusId: 7,
+				timestamp: row.F_SALIDA,
+			};
+		case row.F_AFORO:
+			return {
+				statusId: 6,
+				timestamp: row.F_AFORO,
+			};
+		default:
+			return {
+				statusId: 5,
+				timestamp: null,
+			};
+	}
 };
 
 const upsertEvents = async (eventsToUpsert: ShipmentEvent[], sheetName: string) => {
 	try {
-		const { data, error } = await supabase.from("ShipmentEvent").upsert(eventsToUpsert, {
-			onConflict: "hbl,statusId",
-		});
-
+		const { data, error } = await supabase_db.events.upsert(eventsToUpsert);
 		if (data) {
 			return {
 				sheetName: sheetName,
