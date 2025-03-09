@@ -62,7 +62,6 @@ const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: 
 	//remove all rows with HBL null or empty
 
 	const filteredData = processRawData(rawData as ExcelRow[]);
-
 	const eventData = await Promise.all(filteredData.map((row) => createEventData(row, userId)));
 	const upsertedEvents = await upsertEvents(eventData as ShipmentEvent[], sheetName);
 	return upsertedEvents;
@@ -71,42 +70,35 @@ const processSheet = async (sheetName: string, workbook: XLSX.WorkBook, userId: 
 const processRawData = (rawData: ExcelRow[]) => {
 	//remove all rows with HBL null or empty or F_AFORO null or empty
 	const filteredData = rawData.filter((row) => (row.HBL && row.HBL !== "") || row.HBL.length < 8);
-	return filteredData.map((row) => {
-		if (row.HBL.length > 8) {
-			return {
-				hbl: row.HBL,
-				F_AFORO: row.F_AFORO ? excelDateToISO(row.F_AFORO) : null,
-				F_SALIDA: row.F_SALIDA ? excelDateToISO(row.F_SALIDA) : null,
-				F_ENTREGA: row.F_ENTREGA ? excelDateToISO(row.F_ENTREGA) : null,
-			};
-		}
-		//remove null values
-	});
+	return filteredData.map((row) => ({
+		hbl: row.HBL,
+		F_AFORO: row.F_AFORO ? excelDateToISO(row.F_AFORO) : null,
+		F_SALIDA: row.F_SALIDA ? excelDateToISO(row.F_SALIDA) : null,
+		F_ENTREGA: row.F_ENTREGA ? excelDateToISO(row.F_ENTREGA) : null,
+	}));
 };
 
 const getShipmentStatus = (row: any) => {
-	switch (true) {
-		case row.F_ENTREGA:
-			return {
-				statusId: 10,
-				timestamp: row.F_ENTREGA,
-			};
-		case row.F_SALIDA:
-			return {
-				statusId: 7,
-				timestamp: row.F_SALIDA,
-			};
-		case row.F_AFORO:
-			return {
-				statusId: 6,
-				timestamp: row.F_AFORO,
-			};
-		default:
-			return {
-				statusId: 5,
-				timestamp: null,
-			};
+	if (row.F_ENTREGA) {
+		return {
+			statusId: 10,
+			timestamp: row.F_ENTREGA,
+		};
+	} else if (row.F_SALIDA) {
+		return {
+			statusId: 7,
+			timestamp: row.F_SALIDA,
+		};
+	} else if (row.F_AFORO) {
+		return {
+			statusId: 6,
+			timestamp: row.F_AFORO,
+		};
 	}
+	return {
+		statusId: 5,
+		timestamp: null,
+	};
 };
 
 const upsertEvents = async (eventsToUpsert: ShipmentEvent[], sheetName: string) => {
