@@ -488,7 +488,7 @@ export const prisma_db = {
 					},
 				},
 				orderBy: { id: "desc" },
-				take: 6,
+				take: 12,
 			});
 
 			const formattedContainers = containers?.map((container) => {
