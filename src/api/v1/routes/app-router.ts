@@ -7,6 +7,7 @@ import containerRoutes from "./containers-routes";
 import issuesRouter from "./issues-router";
 import excelRoutes from "./excel-routes";
 import agenciesRoutes from "./agencies-routes";
+import imagesRoutes from "./images-router";
 const router = Router();
 
 // API routes
@@ -16,6 +17,7 @@ router.use("/stats", statsRouter);
 router.use("/containers", containerRoutes);
 router.use("/excel", excelRoutes);
 router.use("/agencies", agenciesRoutes);
+router.use("/images", imagesRoutes);
 
 router.get("/", (req: Request, res: Response) => {
 	res.status(200).json({ status: "ok app routes" });

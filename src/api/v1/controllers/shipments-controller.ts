@@ -15,7 +15,7 @@ export const shipmentsController = {
 			//implementation missing
 			//const user = req.user;
 			const shipments = await prisma_db.shipments.getShipments({
-				limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+				limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
 				offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
 			});
 
@@ -94,13 +94,13 @@ export const shipmentsController = {
 		};
 		res.json(shipment_with_mysql);
 	},
-	/* scanShipment: async (req: Request, res: Response) => {
+	getShipmentsInInvoice: async (req: Request, res: Response) => {
 		try {
 			const hbl = req.params.hbl;
 			if (!hbl) {
 				return res.status(400).json({ message: "HBL is required" });
 			}
-			let shipment = await prisma_db.shipments.scanShipment(hbl);
+			let shipment = await prisma_db.shipments.getShipmentByHbl(hbl);
 
 			if (shipment) {
 				const invoiceId = shipment?.invoiceId;
@@ -123,7 +123,7 @@ export const shipmentsController = {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
-	}, */
+	},
 
 	scanShipment: async (req: Request, res: Response) => {
 		try {

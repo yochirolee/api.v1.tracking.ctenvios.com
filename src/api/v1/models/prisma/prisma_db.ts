@@ -2,10 +2,9 @@ import {
 	Agency,
 	Container,
 	Location,
-	User,
 	ShipmentEvent,
-	UpdateMethod,
-	Shipment,
+	User,
+	
 } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 import { supabase_db } from "../supabase/supabase_db";
@@ -71,7 +70,7 @@ export const prisma_db = {
 		},
 	},
 	shipments: {
-		getShipments: async ({ limit = 50, offset = 0 }: { limit?: number; offset?: number }) => {
+		getShipments: async ({ limit = 100, offset = 0 }: { limit?: number; offset?: number }) => {
 			const [shipments, totalShipments] = await Promise.all([
 				prisma.shipment.findMany({
 					select: {
@@ -219,6 +218,7 @@ export const prisma_db = {
 					},
 					state: true,
 					city: true,
+					
 				},
 			});
 			return shipments.flatMap((shipment) => {
@@ -231,6 +231,12 @@ export const prisma_db = {
 					city: shipment.city,
 				};
 			});
+		},
+	},
+	shipmentEvents: {
+		updateShipmentEvent: async (data: any) => {
+			const shipmentEvent = await prisma.shipmentEvent.update({ where: { id: data.id }, data });
+			return shipmentEvent;
 		},
 	},
 
