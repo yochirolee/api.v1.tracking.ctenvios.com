@@ -1,11 +1,4 @@
-import {
-	Agency,
-	Container,
-	Location,
-	ShipmentEvent,
-	User,
-	
-} from "@prisma/client";
+import { Agency, Container, ShipmentEvent, User } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 import { supabase_db } from "../supabase/supabase_db";
 import e from "express";
@@ -117,7 +110,6 @@ export const prisma_db = {
 					events: {
 						include: {
 							status: true,
-							location: true,
 
 							user: {
 								select: {
@@ -167,21 +159,7 @@ export const prisma_db = {
 		},
 
 		//tx to update a shipment and the events
-		scanShipmentTransaction: async (data: any[], locationData: Omit<Location, "id">) => {
-			let location: Location | null = null;
-			if (locationData.latitude && locationData.longitude) {
-				location = await prisma.location.upsert({
-					where: {
-						latitude_longitude: {
-							latitude: locationData.latitude,
-							longitude: locationData.longitude,
-						},
-					},
-					update: locationData,
-					create: locationData,
-				});
-			}
-
+		scanShipmentTransaction: async (data: any[]) => {
 			const { data: supabaseData, error } = await supabase_db.events.upsert(data);
 			console.log(supabaseData, "eventData");
 			console.log(error, "eventsError");
@@ -211,17 +189,23 @@ export const prisma_db = {
 					hbl: true,
 					invoiceId: true,
 					description: true,
+					timestamp: true,
 					agency: {
 						select: {
 							name: true,
 						},
 					},
+					status: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
 					state: true,
 					city: true,
-					
 				},
 			});
-			return shipments.flatMap((shipment) => {
+			return shipments.map((shipment) => {
 				return {
 					hbl: shipment.hbl,
 					invoiceId: shipment.invoiceId,
@@ -229,6 +213,8 @@ export const prisma_db = {
 					agency: shipment?.agency?.name,
 					state: shipment.state,
 					city: shipment.city,
+					status: shipment.status.name,
+					timestamp: shipment.timestamp,
 				};
 			});
 		},
@@ -454,21 +440,6 @@ export const prisma_db = {
 		},
 	}, */
 
-	locations: {
-		upsertLocation: async (data: Location) => {
-			const location = await prisma.location.upsert({
-				where: {
-					latitude_longitude: {
-						latitude: data.latitude,
-						longitude: data.longitude,
-					},
-				},
-				update: data,
-				create: data,
-			});
-			return location;
-		},
-	},
 	stats: {
 		containersStatus: async () => {
 			const containers = await prisma.container.findMany({

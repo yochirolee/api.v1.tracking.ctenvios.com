@@ -133,9 +133,7 @@ const upsertEvents = async (eventsToUpsert: ShipmentEvent[], sheetName: string) 
 const createEventData = async (
 	row: any,
 	userId: string,
-): Promise<
-	Pick<ShipmentEvent, "hbl" | "statusId" | "timestamp" | "userId" | "updateMethod" | "locationId">
-> => {
+): Promise<Pick<ShipmentEvent, "hbl" | "statusId" | "timestamp" | "userId" | "updateMethod">> => {
 	const status = getShipmentStatus(row);
 
 	return {
@@ -144,7 +142,6 @@ const createEventData = async (
 		timestamp: status.timestamp,
 		userId: userId,
 		updateMethod: UpdateMethod.EXCEL_FILE,
-		locationId: null,
 	};
 };
 

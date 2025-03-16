@@ -6,6 +6,16 @@ import { generateMySqlEvents } from "../utils/_generate_sql_events";
 import { flattenShipments, formatSearchResult } from "../utils/_format_response";
 import { UpdateMethod } from "@prisma/client";
 import { getLocation } from "../utils/_getLocation";
+import { supabase_db } from "../models/supabase/supabase_db";
+
+// Define interface outside the object
+interface MakeDeliveryInterface {
+	hbls: string[];
+	statusId: number;
+	timestamp: string;
+	lat: number;
+	loc: number;
+}
 
 export const shipmentsController = {
 	getShipments: async (req: Request, res: Response) => {
@@ -125,6 +135,39 @@ export const shipmentsController = {
 		}
 	},
 
+	//make delivery
+	deliveryShipments: async (req: Request, res: Response) => {
+		try {
+			const { shipments } = req.body;
+			const userId = req.user.userId;
+
+			const shipmentsToDelivery = shipments.map((shipment: any) => {
+				return {
+					hbl: shipment.hbl,
+					statusId: shipment.statusId,
+					timestamp: shipment.timestamp,
+					userId: userId,
+					latitude: shipment.lat,
+					longitude: shipment.loc,
+					updateMethod: UpdateMethod.SCANNER,
+				};
+			});
+
+			if (!shipments || !userId) {
+				return res.status(400).json({ message: "All fields are required" });
+			}
+			const { data, error } = await supabase_db.events.upsert(shipmentsToDelivery);
+			if (error) {
+				console.error(error);
+				return res.status(500).json({ message: "Internal server error" });
+			}
+			res.json(data);
+		} catch (error) {
+			// Implement the rest of your logic here
+			console.error(error);
+			res.status(500).json({ message: "Internal server error" });
+		}
+	},
 	scanShipment: async (req: Request, res: Response) => {
 		try {
 			const { hbl, statusId, timestamp, lat, loc } = req.body;
@@ -133,24 +176,6 @@ export const shipmentsController = {
 				return res.status(400).json({ message: "All fields are required" });
 			}
 
-			const locationData = {
-				latitude: lat,
-				longitude: loc,
-				name: null,
-				address: null,
-				state: null,
-				city: null,
-				country_code: null,
-				updatedAt: new Date(),
-				createdAt: new Date(),
-			};
-			const location = await getLocation(lat, loc);
-			locationData.name = location?.display_name;
-			locationData.state = location?.address?.state;
-			locationData.city = location?.address?.city;
-			locationData.country_code = location?.address?.country_code;
-			locationData.updatedAt = new Date();
-
 			const eventData: any[] = [
 				{
 					hbl,
@@ -158,11 +183,12 @@ export const shipmentsController = {
 					updateMethod: UpdateMethod.SCANNER,
 					timestamp: new Date(timestamp),
 					statusId,
-					locationId: location?.id || null,
+					latitude: lat,
+					longitude: loc,
 				},
 			];
 
-			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData, locationData);
+			const shipment = await prisma_db.shipments.scanShipmentTransaction(eventData);
 
 			res.json("ok");
 		} catch (error) {

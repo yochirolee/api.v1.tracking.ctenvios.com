@@ -102,26 +102,13 @@ model ShipmentEvent {
   updateMethod UpdateMethod @default(SYSTEM)
   userId String
   user User @relation(fields: [userId], references: [id])
-  location Location? @relation(fields: [locationId], references: [id])
-  locationId Int?
+  latitude Float?
+  longitude Float?
   images String[]
   @@index([hbl,statusId] )
   @@unique([hbl,statusId])
 }
-model Location {
-  id Int @id @default(autoincrement())
-  name String?
-  address String?
-  city String?
-  state String?
-  country_code String?
-  latitude Float 
-  longitude Float 
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz()
-  events ShipmentEvent[]
-  @@unique([latitude,longitude])
-}
+
 
 enum UpdateMethod {
   SYSTEM
