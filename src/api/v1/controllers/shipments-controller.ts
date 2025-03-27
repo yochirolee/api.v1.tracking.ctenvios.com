@@ -141,14 +141,15 @@ export const shipmentsController = {
 			const { shipments } = req.body;
 			const userId = req.user.userId;
 
+
 			const shipmentsToDelivery = shipments.map((shipment: any) => {
 				return {
 					hbl: shipment.hbl,
 					statusId: shipment.statusId,
 					timestamp: shipment.timestamp,
 					userId: userId,
-					latitude: shipment.lat,
-					longitude: shipment.loc,
+					latitude: shipment.latitude,
+					longitude: shipment.longitude,
 					updateMethod: UpdateMethod.SCANNER,
 				};
 			});
@@ -157,6 +158,8 @@ export const shipmentsController = {
 				return res.status(400).json({ message: "All fields are required" });
 			}
 			const { data, error } = await supabase_db.events.upsert(shipmentsToDelivery);
+
+			console.log(data, "data");
 			if (error) {
 				console.error(error);
 				return res.status(500).json({ message: "Internal server error" });

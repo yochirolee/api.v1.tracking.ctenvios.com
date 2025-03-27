@@ -190,6 +190,8 @@ export const prisma_db = {
 					invoiceId: true,
 					description: true,
 					timestamp: true,
+					sender: true,
+					receiver: true,
 					agency: {
 						select: {
 							name: true,
@@ -205,7 +207,7 @@ export const prisma_db = {
 					city: true,
 				},
 			});
-			return shipments.map((shipment) => {
+			return shipments.flatMap((shipment) => {
 				return {
 					hbl: shipment.hbl,
 					invoiceId: shipment.invoiceId,
@@ -215,6 +217,8 @@ export const prisma_db = {
 					city: shipment.city,
 					status: shipment.status.name,
 					timestamp: shipment.timestamp,
+					sender: shipment.sender,
+					receiver: shipment.receiver,
 				};
 			});
 		},
@@ -223,6 +227,24 @@ export const prisma_db = {
 		updateShipmentEvent: async (data: any) => {
 			const shipmentEvent = await prisma.shipmentEvent.update({ where: { id: data.id }, data });
 			return shipmentEvent;
+		},
+		getShipmentEventById: async (id: number) => {
+			const shipmentEvent = await prisma.shipmentEvent.findUnique({ where: { id } });
+			return shipmentEvent;
+		},
+	},
+	eventImages: {
+		create: async (data: any) => {
+			const eventImage = await prisma.eventImages.create({ data });
+			return eventImage;
+		},
+		update: async (data: any) => {
+			const eventImage = await prisma.eventImages.update({ where: { id: data.id }, data });
+			return eventImage;
+		},
+		delete: async (id: number) => {
+			const eventImage = await prisma.eventImages.delete({ where: { id } });
+			return eventImage;
 		},
 	},
 

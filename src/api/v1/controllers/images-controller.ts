@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import supabase from "../config/supabase-client";
 import sharp from "sharp";
+import { prisma_db } from "../models/prisma/prisma_db";
 
 const BUCKET_NAME = "uploads";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -10,6 +11,7 @@ export const imagesController = {
 	uploadImages: async (req: Request, res: Response) => {
 		try {
 			console.log(req.file, "req.files");
+			console.log(req.body, "req.body");
 			if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
 			const { originalname, buffer, mimetype, size } = req.file;
@@ -32,7 +34,7 @@ export const imagesController = {
 				.webp({ quality: 80 })
 				.toBuffer();
 
-			const filePath = `${req.body.eventId}/${Date.now()}-${originalname.replace(/\s+/g, "-")}`;
+			const filePath = `${Date.now()}-${originalname.replace(/\s+/g, "-")}`;
 
 			// Upload optimized file
 			const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, optimizedBuffer, {
@@ -51,18 +53,15 @@ export const imagesController = {
 			if (!publicUrlData?.publicURL) {
 				return res.status(400).json({ error: "Failed to generate public URL" });
 			}
-			/* const eventsIds = req.body.eventsIds;
-			console.log(eventsIds);
-			const updatedEvent = await prisma_db.shipmentEvents.updateShipmentEvent(
-				eventsIds.map((eventId: number) => ({
-					id: eventId,
-					images: [publicUrlData.publicURL],
-				})),
-			); */
 
-			/* 	if (!updatedEvent) {
-				return res.status(400).json({ error: "Failed to update shipment event" });
-			} */
+			// Get current event data
+			const currentEvent = await prisma_db.eventImages.create({
+				eventId: parseInt(req.body.eventsId),
+				image: publicUrlData.publicURL,
+			});
+
+			console.log(currentEvent, "currentEvent");
+
 			res.json({
 				message: "File uploaded successfully",
 				url: publicUrlData.publicURL,
