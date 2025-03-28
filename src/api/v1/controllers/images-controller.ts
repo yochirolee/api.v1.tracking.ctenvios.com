@@ -51,15 +51,6 @@ export const imagesController = {
 			if (!publicUrlData?.publicURL) {
 				return res.status(400).json({ error: "Failed to generate public URL" });
 			}
-			const eventsId = req.body.eventsId.split(",");
-			for (const eventId of eventsId) {
-				const eventImagesData = {
-					eventId: parseInt(eventId),
-					image: publicUrlData.publicURL,
-				};
-				// Get current event data
-				await prisma_db.eventImages.createMany(eventImagesData);
-			}
 
 			res.json({
 				message: "File uploaded successfully",
@@ -69,6 +60,23 @@ export const imagesController = {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 			console.error("Upload error:", errorMessage);
 			res.status(500).json({ error: "Image processing failed" });
+		}
+	},
+	insertEventImages: async (req: Request, res: Response) => {
+		try {
+			const { eventsId, image } = req.body;
+			const data = eventsId.map((eventId: string) => ({
+				eventId: parseInt(eventId),
+				imageUrl: image,
+			}));
+			const eventImages = await prisma_db.eventImages.createMany(data);
+			res.json({
+				eventImages,
+			});
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+			console.error("Upload error:", errorMessage);
+			res.status(500).json({ error: "Error inserting event images" });
 		}
 	},
 };

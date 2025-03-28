@@ -14,4 +14,9 @@ imagesRoutes.post(
 	imagesController.uploadImages,
 );
 
+imagesRoutes.post(
+	"/insert",
+	imagesController.insertEventImages,
+);
+
 export default imagesRoutes;

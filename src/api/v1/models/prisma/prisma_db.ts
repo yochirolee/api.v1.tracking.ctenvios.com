@@ -110,7 +110,7 @@ export const prisma_db = {
 					events: {
 						include: {
 							status: true,
-
+							images: true,
 							user: {
 								select: {
 									id: true,
@@ -122,6 +122,7 @@ export const prisma_db = {
 					},
 				},
 			});
+			console.log(shipment, "shipment");
 			return shipment;
 		},
 		getShipmentsByHbls: async (hbls: string[]) => {

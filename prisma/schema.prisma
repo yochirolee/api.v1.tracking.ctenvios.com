@@ -113,7 +113,7 @@ model EventImages {
   id Int @id @default(autoincrement())
   eventId Int
   event ShipmentEvent @relation(fields: [eventId], references: [id])
-  image String
+  imageUrl String
 }
 
 
