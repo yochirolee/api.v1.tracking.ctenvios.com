@@ -10,8 +10,6 @@ const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const imagesController = {
 	uploadImages: async (req: Request, res: Response) => {
 		try {
-			console.log(req.file, "req.files");
-			console.log(req.body, "req.body");
 			if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
 			const { originalname, buffer, mimetype, size } = req.file;
@@ -53,14 +51,15 @@ export const imagesController = {
 			if (!publicUrlData?.publicURL) {
 				return res.status(400).json({ error: "Failed to generate public URL" });
 			}
-
-			// Get current event data
-			const currentEvent = await prisma_db.eventImages.create({
-				eventId: parseInt(req.body.eventsId),
-				image: publicUrlData.publicURL,
-			});
-
-			console.log(currentEvent, "currentEvent");
+			const eventsId = req.body.eventsId.split(",");
+			for (const eventId of eventsId) {
+				const eventImagesData = {
+					eventId: parseInt(eventId),
+					image: publicUrlData.publicURL,
+				};
+				// Get current event data
+				await prisma_db.eventImages.createMany(eventImagesData);
+			}
 
 			res.json({
 				message: "File uploaded successfully",

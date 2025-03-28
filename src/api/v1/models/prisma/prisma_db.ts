@@ -234,8 +234,8 @@ export const prisma_db = {
 		},
 	},
 	eventImages: {
-		create: async (data: any) => {
-			const eventImage = await prisma.eventImages.create({ data });
+		createMany: async (data: any) => {
+			const eventImage = await prisma.eventImages.createMany({ data });
 			return eventImage;
 		},
 		update: async (data: any) => {
