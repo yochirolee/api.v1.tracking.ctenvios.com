@@ -114,6 +114,8 @@ model EventImages {
   eventId Int
   event ShipmentEvent @relation(fields: [eventId], references: [id])
   imageUrl String
+  createdAt DateTime @default(now()) @db.Timestamptz()
+
 }
 
 

@@ -110,25 +110,56 @@ export const shipmentsController = {
 			if (!hbl) {
 				return res.status(400).json({ message: "HBL is required" });
 			}
-			let shipment = await prisma_db.shipments.getShipmentByHbl(hbl);
+			const result = await mysql_db.parcels.getAllParcelsInInvoiceByHbl(hbl);
+			const shipment_tracking = await prisma_db.shipments.getShipmentsByInvoiceId(
+				result[0].invoiceId,
+			);
 
-			if (shipment) {
-				const invoiceId = shipment?.invoiceId;
-				if (!invoiceId) {
-					return res.status(404).json({ message: "Invoice ID not found" });
-				}
-				const result = await prisma_db.shipments.getShipmentsByInvoiceId(invoiceId);
-				return res.json(result);
-			} else {
-				const mysql_parcel = await mysql_db.parcels.getInHblArray([hbl], false);
-				if (!mysql_parcel.length) {
-					return res.status(404).json({ message: "Shipment not found" });
-				}
+			const invoiceId = result[0].invoiceId;
 
-				const invoiceId = mysql_parcel[0].invoiceId;
-				const result = await mysql_db.parcels.getByInvoiceId(invoiceId);
-				return res.json(result);
-			}
+			const shippingAddress = toCamelCase(
+				[
+					toCamelCase(result[0].cll),
+					result[0].entre_cll ? "entre " + toCamelCase(result[0].entre_cll) : "",
+					result[0].no ? "No. " + toCamelCase(result[0].no) : "",
+					result[0].apto ? "Apto. " + toCamelCase(result[0].apto) : "",
+					result[0].reparto ? "Reparto. " + toCamelCase(result[0].reparto) : "",
+					result[0].provincia ? "Provincia. " + toCamelCase(result[0].state) : "",
+					result[0].ciudad ? "Ciudad. " + toCamelCase(result[0].city) : "",
+				]
+					.filter(Boolean)
+					.join(" "),
+			);
+			const count = result.length;
+			const formattedShipments = {
+				invoiceId: invoiceId,
+				invoiceDate: result[0].invoiceDate,
+				count: count,
+				sender: {
+					name: toCamelCase(result[0].sender),
+					mobile: result[0].senderMobile,
+					ci: result[0].senderCi,
+				},
+				receiver: {
+					name: toCamelCase(result[0].receiver),
+					mobile: result[0].receiverMobile,
+					ci: result[0].receiverCi,
+					address: shippingAddress,
+					state: result[0].province,
+					city: result[0].city,
+				},
+				shipments: result.map((parcel) => {
+					const shipment = shipment_tracking.find((shipment) => shipment.hbl === parcel.hbl);
+					return {
+						hbl: parcel.hbl,
+						weight: parcel.weight,
+						description: toCamelCase(parcel.description),
+						status: shipment?.status,
+						timestamp: shipment?.timestamp,
+					};
+				}),
+			};
+			return res.json(formattedShipments);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
@@ -141,7 +172,6 @@ export const shipmentsController = {
 			const { shipments } = req.body;
 			const userId = req.user.userId;
 
-
 			const shipmentsToDelivery = shipments.map((shipment: any) => {
 				return {
 					hbl: shipment.hbl,
@@ -153,6 +183,7 @@ export const shipmentsController = {
 					updateMethod: UpdateMethod.SCANNER,
 				};
 			});
+			console.log(shipmentsToDelivery, "shipmentsToDelivery");
 
 			if (!shipments || !userId) {
 				return res.status(400).json({ message: "All fields are required" });

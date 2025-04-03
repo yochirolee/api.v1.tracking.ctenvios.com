@@ -261,6 +261,12 @@ export const mysql_db = {
 				throw error;
 			}
 		},
+		getAllParcelsInInvoiceByHbl: async (hbl: string) => {
+			const query =
+				"select * from parcels where invoiceId in (select invoiceId from parcels where hbl=?)";
+			const result = await mysql_client(query, [hbl]);
+			return result;
+		},
 
 		getByHbl: async (hbl: string) => {
 			try {
