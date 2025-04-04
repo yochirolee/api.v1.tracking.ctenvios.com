@@ -148,6 +148,7 @@ export const shipmentsController = {
 					state: result[0].province,
 					city: result[0].city,
 				},
+				
 				shipments: result.map((parcel) => {
 					const shipment = shipment_tracking.find((shipment) => shipment.hbl === parcel.hbl);
 					return {
