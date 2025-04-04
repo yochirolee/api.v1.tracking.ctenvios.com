@@ -10,6 +10,9 @@ export const generateMySqlEvents = (search_on_mysql: any) => {
 				description: "Shipment created in Agency",
 			},
 			updateMethod: "SYSTEM",
+			user: {
+				name: search_on_mysql?.invoiceUser,
+			},
 		});
 	}
 	if (search_on_mysql?.dispatchDate) {
@@ -58,5 +61,3 @@ export const generateMySqlEvents = (search_on_mysql: any) => {
 	}
 	return events;
 };
-
-

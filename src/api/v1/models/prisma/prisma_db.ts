@@ -122,7 +122,7 @@ export const prisma_db = {
 					},
 				},
 			});
-			console.log(shipment, "shipment");
+
 			return shipment;
 		},
 		getShipmentsByHbls: async (hbls: string[]) => {

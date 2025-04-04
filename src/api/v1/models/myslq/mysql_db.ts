@@ -15,7 +15,7 @@ export const mysql_db = {
 				throw error;
 			}
 		},
-		getAll: async (limit = 30) => {
+		getAll: async (limit = 60) => {
 			try {
 				const result = await mysql_client(
 					"select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores order by codigo DESC limit ?	;",
@@ -154,6 +154,7 @@ export const mysql_db = {
 					SELECT SQL_CALC_FOUND_ROWS 
 					oe_emp_det.codigo_paquete AS hbl,
 					oe.cod_envio AS invoiceId,
+					oe_emp_det.usuario AS invoiceUser,
 					oe_emp_det.descripcion AS description,
 					oe.cliente AS senderId,
 					CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) AS sender,
