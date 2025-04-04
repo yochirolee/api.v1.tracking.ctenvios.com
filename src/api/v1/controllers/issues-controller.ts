@@ -5,7 +5,7 @@ import { z } from "zod";
 import { IssueType, IssuePriority } from "@prisma/client";
 const issueSchema = z.object({
 	hbl: z.string(),
-	title: z.string(),
+
 	description: z.string(),
 	type: z.nativeEnum(IssueType),
 	priority: z.nativeEnum(IssuePriority),
@@ -28,6 +28,7 @@ const commentSchema = z.object({
 export const issuesController = {
 	getIssues: async (req: Request, res: Response) => {
 		const issues = await prisma_db.issues.getIssues();
+		console.log(issues, "issues");
 		res.status(200).json(issues);
 	},
 	getIssuesWithComments: async (req: Request, res: Response) => {
@@ -58,7 +59,8 @@ export const issuesController = {
 			const issue = await prisma_db.issues.createIssue(issueData);
 			res.status(200).json(issue);
 		} catch (error) {
-			res.status(500).json({ error: "Failed to create issue" });
+			console.log(error, "error");
+			res.status(500).json({ error: "Failed to create issue", details: error });
 		}
 	},
 	updateIssue: async (req: Request, res: Response) => {

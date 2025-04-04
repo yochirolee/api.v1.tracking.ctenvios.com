@@ -28,6 +28,9 @@ model User {
   shipmentEvents ShipmentEvent[]
   refreshToken String? //how to handle this?
   users User[] @relation("UserCreator")
+  resolvedIssues Issues[] @relation("IssueResolver")
+  issues Issues[] @relation("IssueCreator")
+  issueComments IssueComments[] @relation("IssueCreator")
   @@index([email])
 }
 
@@ -87,6 +90,7 @@ model Shipment {
   weight Float?
   userId String
   user User @relation(fields: [userId], references: [id])
+  issues Issues[]
   @@index([hbl])
   
 }
@@ -115,6 +119,7 @@ model EventImages {
   event ShipmentEvent @relation(fields: [eventId], references: [id])
   imageUrl String
   createdAt DateTime @default(now()) @db.Timestamptz()
+ 
 
 }
 
@@ -133,10 +138,10 @@ enum EntityType {
   COMMENT
 }
 
-/* model Issues {
+model Issues {
   id Int @id @default(autoincrement())
   hbl String
-  title String
+  shipment Shipment @relation(fields: [hbl], references: [hbl], onDelete: Cascade, onUpdate: Cascade)
   description String
   type IssueType
   priority IssuePriority @default(MEDIUM)
@@ -145,7 +150,7 @@ enum EntityType {
   resolvedById String?  
   resolvedAt DateTime? @db.Timestamptz()
   comments IssueComments[]
-  images Images[]
+  
   userId String
   user User @relation("IssueCreator", fields: [userId], references: [id])
   timestamp DateTime @default(now()) @db.Timestamptz()
@@ -158,12 +163,12 @@ model IssueComments {
   issue Issues @relation(fields: [issueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   comment String
   userId String
-  user User @relation(fields: [userId], references: [id])
+  user User @relation("IssueCreator", fields: [userId], references: [id])
   createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @updatedAt @db.Timestamptz()
-  images Images[]
+  updatedAt DateTime @default(now()) @db.Timestamptz()
+
 }
- */
+ 
 enum IssueType {
   DAMAGE
   DELAY

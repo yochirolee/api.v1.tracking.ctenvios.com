@@ -18,6 +18,7 @@ router.use("/containers", containerRoutes);
 router.use("/excel", excelRoutes);
 router.use("/agencies", agenciesRoutes);
 router.use("/images", imagesRoutes);
+router.use("/issues", issuesRouter);
 
 router.get("/", (req: Request, res: Response) => {
 	res.status(200).json({ status: "ok app routes" });

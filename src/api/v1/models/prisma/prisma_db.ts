@@ -1,4 +1,4 @@
-import { Agency, Container, ShipmentEvent, User } from "@prisma/client";
+import { Agency, Container, IssueComments, Issues, ShipmentEvent, User } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 import { supabase_db } from "../supabase/supabase_db";
 import e from "express";
@@ -308,7 +308,7 @@ export const prisma_db = {
 			return agency;
 		},
 	},
-	/* 	issues: {
+	issues: {
 		getIssues: async ({ limit = 10, page = 1 }: { limit?: number; page?: number } = {}) => {
 			const issues = await prisma.issues.findMany({
 				include: {
@@ -356,7 +356,6 @@ export const prisma_db = {
 					invoiceId: issue.shipment.invoiceId,
 					priority: issue.priority,
 					type: issue.type,
-					title: issue.title,
 					description: issue.description,
 					resolved: issue.resolved,
 					resolvedAt: issue.resolvedAt,
@@ -389,7 +388,7 @@ export const prisma_db = {
 			return issue;
 		},
 		createIssue: async (
-			data: Pick<Issues, "hbl" | "title" | "description" | "type" | "userId" | "priority">,
+			data: Pick<Issues, "hbl" | "description" | "type" | "userId" | "priority">,
 		) => {
 			const shipment = await prisma.shipment.update({
 				where: { hbl: data.hbl },
@@ -426,7 +425,7 @@ export const prisma_db = {
 		},
 	},
 	issueComments: {
-		createIssueComment: async (data: Pick<IssueComments, "issueId" | "comment" | "userId">) => {
+		createIssueComment: async (data: Pick<	IssueComments, "issueId" | "comment" | "userId">) => {
 			const issueComment = await prisma.issueComments.create({ data });
 			return issueComment;
 		},
@@ -461,7 +460,7 @@ export const prisma_db = {
 			const issueComment = await prisma.issueComments.delete({ where: { id } });
 			return issueComment;
 		},
-	}, */
+	},
 
 	stats: {
 		containersStatus: async () => {
