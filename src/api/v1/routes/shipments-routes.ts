@@ -13,6 +13,7 @@ shipmentsRoutes.get("/search", authMiddleware, shipmentsController.searchShipmen
 shipmentsRoutes.get("/hbl/:hbl", authMiddleware, shipmentsController.getShipmentByHbl);
 shipmentsRoutes.get("/delivery/:hbl", authMiddleware, shipmentsController.getShipmentsInInvoice);
 shipmentsRoutes.post("/delivery", authMiddleware, shipmentsController.deliveryShipments);
+shipmentsRoutes.get("/user", authMiddleware, shipmentsController.getShipmentsByUserId);
 
 //upsert shipments
 shipmentsRoutes.get("/scanned/:statusId", authMiddleware, shipmentsController.scannedShipments);

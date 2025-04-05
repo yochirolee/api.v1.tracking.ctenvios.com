@@ -110,7 +110,7 @@ export const shipmentsController = {
 			if (!hbl) {
 				return res.status(400).json({ message: "HBL is required" });
 			}
-			const result = await mysql_db.parcels.getAllParcelsInInvoiceByHbl(hbl) || [];
+			const result = (await mysql_db.parcels.getAllParcelsInInvoiceByHbl(hbl)) || [];
 			if (!result.length) {
 				return res.status(400).json({ message: "No shipments found" });
 			}
@@ -118,7 +118,6 @@ export const shipmentsController = {
 			const shipment_tracking = await prisma_db.shipments.getShipmentsByInvoiceId(
 				result[0].invoiceId,
 			);
-
 
 			const invoiceId = result[0].invoiceId;
 
@@ -153,7 +152,7 @@ export const shipmentsController = {
 					state: result[0].province,
 					city: result[0].city,
 				},
-				
+
 				shipments: result.map((parcel) => {
 					const shipment = shipment_tracking.find((shipment) => shipment.hbl === parcel.hbl);
 					return {
@@ -170,6 +169,11 @@ export const shipmentsController = {
 			console.error(error);
 			res.status(500).json({ message: "Internal server error" });
 		}
+	},
+	getShipmentsByUserId: async (req: Request, res: Response) => {
+		const userId = req.user.userId;
+		const shipments = await prisma_db.shipments.getByUserId(userId);
+		res.json(shipments);
 	},
 
 	//make delivery

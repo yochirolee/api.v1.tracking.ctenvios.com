@@ -223,6 +223,20 @@ export const prisma_db = {
 				};
 			});
 		},
+		getByUserId: async (userId: string, limit = 1000, offset = 0) => {
+			console.log(userId, limit, offset);
+			const shipments = await prisma.shipment.findMany({
+				where: { userId },
+				include: {
+					status: true,
+					agency: true,
+				},
+				orderBy: { timestamp: "desc" },
+				take: limit,
+				skip: offset,
+			});
+			return shipments;
+		},
 	},
 	shipmentEvents: {
 		updateShipmentEvent: async (data: any) => {
@@ -425,7 +439,7 @@ export const prisma_db = {
 		},
 	},
 	issueComments: {
-		createIssueComment: async (data: Pick<	IssueComments, "issueId" | "comment" | "userId">) => {
+		createIssueComment: async (data: Pick<IssueComments, "issueId" | "comment" | "userId">) => {
 			const issueComment = await prisma.issueComments.create({ data });
 			return issueComment;
 		},
