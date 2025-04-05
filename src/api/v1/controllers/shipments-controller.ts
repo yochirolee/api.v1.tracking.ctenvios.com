@@ -110,10 +110,15 @@ export const shipmentsController = {
 			if (!hbl) {
 				return res.status(400).json({ message: "HBL is required" });
 			}
-			const result = await mysql_db.parcels.getAllParcelsInInvoiceByHbl(hbl);
+			const result = await mysql_db.parcels.getAllParcelsInInvoiceByHbl(hbl) || [];
+			if (!result.length) {
+				return res.status(400).json({ message: "No shipments found" });
+			}
+
 			const shipment_tracking = await prisma_db.shipments.getShipmentsByInvoiceId(
 				result[0].invoiceId,
 			);
+
 
 			const invoiceId = result[0].invoiceId;
 

@@ -263,10 +263,23 @@ export const mysql_db = {
 			}
 		},
 		getAllParcelsInInvoiceByHbl: async (hbl: string) => {
-			const query =
-				"select * from parcels where invoiceId in (select invoiceId from parcels where hbl=?)";
-			const result = await mysql_client(query, [hbl]);
-			return result;
+			try {
+				hbl = hbl.replace(/[*#?]/g, "");
+				let result = [];
+				//if hbl is a number, get by invoiceId
+				if (!isNaN(Number(hbl))) {
+					const invoice = await mysql_db.parcels.getByInvoiceId(parseInt(hbl));
+					return invoice;
+				}
+				const query =
+					"select * from parcels where invoiceId in (select invoiceId from parcels where hbl=?)";
+				result = (await mysql_client(query, [hbl])) || [];
+
+				return result;
+			} catch (error) {
+				console.error("Error fetching parcels by invoice ID:", error);
+				throw error;
+			}
 		},
 
 		getByHbl: async (hbl: string) => {
