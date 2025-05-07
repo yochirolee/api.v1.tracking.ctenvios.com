@@ -30,6 +30,7 @@ export const shipmentsController = {
 			});
 
 			const flattenedShipments = flattenShipments(shipments.shipments);
+			
 			res.json({ shipments: flattenedShipments, total: shipments.totalShipments });
 		} catch (error) {
 			console.error(error);

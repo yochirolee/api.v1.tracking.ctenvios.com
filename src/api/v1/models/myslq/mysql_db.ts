@@ -300,7 +300,7 @@ export const mysql_db = {
 	stats: {
 		getSalesStats: async () => {
 			const result = await mysql_client(
-				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
+				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where dispatchId is null and containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
 			);
 			const agency = result.map((item: any) => {
 				return {
@@ -331,6 +331,19 @@ export const mysql_db = {
 			);
 			return result;
 		},
+
+		/*
+		SELECT 
+    YEAR(fecha) AS venta_anual,
+    SUM(total + tarjeta_credito+cargo+cargo_extra) AS ventas_totales
+FROM 
+    u373067935_cte.orden_envio
+WHERE 
+    orden_envio.agencia = 129
+GROUP BY 
+    venta_anual
+ORDER BY 
+    venta_anual ASC; */
 		getEmployeeSales: async (agencyId: number = 2) => {
 			const result = await mysql_client(
 				"   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = ? group by usuario ORDER BY sales DESC;",

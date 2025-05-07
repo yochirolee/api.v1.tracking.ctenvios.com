@@ -25,7 +25,7 @@ export const generateMySqlEvents = (search_on_mysql: any) => {
 				code: "IN_WAREHOUSE",
 				description:
 					"Dispatch " +
-					(search_on_mysql?.dispatchStatus === 1 ? "Created" : "Received") +
+					(search_on_mysql?.dispatchStatus === 0 ? "Created" : "Received") +
 					" " +
 					search_on_mysql.dispatchId,
 			},
