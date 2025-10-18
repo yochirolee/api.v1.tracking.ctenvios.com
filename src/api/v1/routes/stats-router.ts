@@ -20,7 +20,11 @@ statsRouter.get("/employees-sales", authMiddleware, async (req, res) => {
 });
 statsRouter.get("/employees-sales-by-month", authMiddleware, async (req, res) => {
    const user = req.user;
-   const sales = await mysql_db.stats.getEmployeeSalesByMonth(user.agencyId, new Date().getMonth() + 1);
+   const params = req.query;
+   const month = params.month ? parseInt(params.month as string) : new Date().getMonth() + 1;
+   const year = params.year ? parseInt(params.year as string) : new Date().getFullYear();
+   const agencyId = params.agencyId ? parseInt(params.agencyId as string) : user.agencyId;
+   const sales = await mysql_db.stats.getEmployeeSalesByMonth(agencyId, month, year);
    res.json(sales);
 });
 statsRouter.get("/containers-status", authMiddleware, async (req, res) => {

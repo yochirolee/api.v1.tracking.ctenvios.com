@@ -2,34 +2,34 @@ import mysql_client from "../../config/mysql-client";
 import { formatSearchResult } from "../../utils/_format_response";
 import { toCamelCase } from "../../utils/_to_camel_case";
 export const mysql_db = {
-	containers: {
-		getById: async (id: number) => {
-			try {
-				const [result] = await mysql_client(
-					"select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores WHERE codigo=?",
-					[id],
-				);
-				return result;
-			} catch (error) {
-				console.log(error);
-				throw error;
-			}
-		},
-		getAll: async (limit = 60) => {
-			try {
-				const result = await mysql_client(
-					"select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores order by codigo DESC limit ?	;",
-					[limit],
-				);
-				return result;
-			} catch (error) {
-				console.log(error);
-				throw error;
-			}
-		},
-		getParcelsByContainerId: async (containerId: number, verbose = false) => {
-			const queryStr = verbose
-				? `SELECT 
+   containers: {
+      getById: async (id: number) => {
+         try {
+            const [result] = await mysql_client(
+               "select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores WHERE codigo=?",
+               [id]
+            );
+            return result;
+         } catch (error) {
+            console.log(error);
+            throw error;
+         }
+      },
+      getAll: async (limit = 60) => {
+         try {
+            const result = await mysql_client(
+               "select codigo as id, fecha as createdAt, numero as name, servicio as service, master, paquetes as total_parcels,peso as weight from contenedores order by codigo DESC limit ?	;",
+               [limit]
+            );
+            return result;
+         } catch (error) {
+            console.log(error);
+            throw error;
+         }
+      },
+      getParcelsByContainerId: async (containerId: number, verbose = false) => {
+         const queryStr = verbose
+            ? `SELECT 
 					oe_emp_det.codigo_paquete AS hbl,
 					a.nombre AS agency,
 					a.id AS agencyId,
@@ -58,7 +58,7 @@ export const mysql_db = {
 					LEFT JOIN ciudades ci ON ci.id = d.estado
 					LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
 				WHERE oe_emp_det.contenedor = ?`
-				: `SELECT 
+            : `SELECT 
 					oe_emp_det.codigo_paquete AS hbl,
 					oe.cod_envio AS invoiceId,
 					oe_emp_det.contenedor AS containerId,
@@ -69,18 +69,18 @@ export const mysql_db = {
 					JOIN orden_envio oe ON oe_emp_det.cod_envio = oe.cod_envio
 					JOIN agencias a ON oe_emp_det.agencia = a.id
 				WHERE oe_emp_det.contenedor = ?`;
-			const result = await mysql_client(queryStr, [containerId]);
+         const result = await mysql_client(queryStr, [containerId]);
 
-			return result;
-		},
-	},
-	parcels: {
-		getAll: async (page = 1, limit = 50) => {
-			page = Math.max(1, page);
-			limit = Math.max(1, limit);
-			const offset = (page - 1) * limit;
+         return result;
+      },
+   },
+   parcels: {
+      getAll: async (page = 1, limit = 50) => {
+         page = Math.max(1, page);
+         limit = Math.max(1, limit);
+         const offset = (page - 1) * limit;
 
-			const queryStr = `
+         const queryStr = `
 				SELECT 
 					oe_emp_det.codigo_paquete AS hbl,
 					oe.cod_envio AS invoiceId,
@@ -124,33 +124,33 @@ export const mysql_db = {
 				ORDER BY invoiceId DESC 
 				LIMIT ? OFFSET ?
 			`;
-			const countQueryStr = "SELECT COUNT(*) as total FROM parcels";
+         const countQueryStr = "SELECT COUNT(*) as total FROM parcels";
 
-			const [packagesFound, [{ total }]] = await Promise.all([
-				mysql_client(queryStr, [limit, offset]),
-				mysql_client(countQueryStr),
-			]);
+         const [packagesFound, [{ total }]] = await Promise.all([
+            mysql_client(queryStr, [limit, offset]),
+            mysql_client(countQueryStr),
+         ]);
 
-			const totalPages = Math.ceil(total / limit);
-			return {
-				packages: packagesFound,
-				meta: {
-					totalResults: total,
-					totalPages,
-					currentPage: page,
-					limit,
-				},
-			};
-		},
-		search: async (searchTerm: string, limit = 50, page = 1) => {
-			try {
-				page = Math.max(1, page);
-				limit = Math.max(1, limit);
-				const offset = (page - 1) * limit;
-				const trimmedSearchTerm = searchTerm ? searchTerm.trim() : "";
+         const totalPages = Math.ceil(total / limit);
+         return {
+            packages: packagesFound,
+            meta: {
+               totalResults: total,
+               totalPages,
+               currentPage: page,
+               limit,
+            },
+         };
+      },
+      search: async (searchTerm: string, limit = 50, page = 1) => {
+         try {
+            page = Math.max(1, page);
+            limit = Math.max(1, limit);
+            const offset = (page - 1) * limit;
+            const trimmedSearchTerm = searchTerm ? searchTerm.trim() : "";
 
-				// Add SQL_CALC_FOUND_ROWS to get accurate total count
-				const baseQuery = `
+            // Add SQL_CALC_FOUND_ROWS to get accurate total count
+            const baseQuery = `
 					SELECT SQL_CALC_FOUND_ROWS 
 					oe_emp_det.codigo_paquete AS hbl,
 					oe.cod_envio AS invoiceId,
@@ -191,134 +191,133 @@ export const mysql_db = {
 					LEFT JOIN despachos ON oe_emp_det.factura = despachos.codigo
 				WHERE`;
 
-				let whereClause: string;
-				let queryParams: any[] = [];
+            let whereClause: string;
+            let queryParams: any[] = [];
 
-				// Determine the WHERE clause based on search term
-				if (trimmedSearchTerm.length === 10 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "c.cel = ? ";
-					queryParams = [trimmedSearchTerm];
-				} else if (trimmedSearchTerm.length === 8 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "d.cel = ?";
-					queryParams = [trimmedSearchTerm];
-				} else if (trimmedSearchTerm.length === 11 && !isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "d.documento = ?";
-					queryParams = [trimmedSearchTerm];
-				} else if (trimmedSearchTerm.startsWith("CTE")) {
-					whereClause = "oe_emp_det.codigo_paquete = ?";
-					queryParams = [trimmedSearchTerm];
-				} else if (!isNaN(Number(trimmedSearchTerm))) {
-					whereClause = "oe.cod_envio = ?";
-					queryParams = [trimmedSearchTerm];
-				} else {
-					const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
-					whereClause =
-						"CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) LIKE ? OR CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) LIKE ? OR oe_emp_det.descripcion LIKE ?";
-					queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard];
-				}
+            // Determine the WHERE clause based on search term
+            if (trimmedSearchTerm.length === 10 && !isNaN(Number(trimmedSearchTerm))) {
+               whereClause = "c.cel = ? ";
+               queryParams = [trimmedSearchTerm];
+            } else if (trimmedSearchTerm.length === 8 && !isNaN(Number(trimmedSearchTerm))) {
+               whereClause = "d.cel = ?";
+               queryParams = [trimmedSearchTerm];
+            } else if (trimmedSearchTerm.length === 11 && !isNaN(Number(trimmedSearchTerm))) {
+               whereClause = "d.documento = ?";
+               queryParams = [trimmedSearchTerm];
+            } else if (trimmedSearchTerm.startsWith("CTE")) {
+               whereClause = "oe_emp_det.codigo_paquete = ?";
+               queryParams = [trimmedSearchTerm];
+            } else if (!isNaN(Number(trimmedSearchTerm))) {
+               whereClause = "oe.cod_envio = ?";
+               queryParams = [trimmedSearchTerm];
+            } else {
+               const searchTermWildcard = `%${trimmedSearchTerm.replace(/\s+/g, "%")}%`;
+               whereClause =
+                  "CONCAT(c.nombre, ' ', c.nombre2, ' ', c.apellido, ' ', c.apellido2) LIKE ? OR CONCAT(d.nombre, ' ', d.nombre2, ' ', d.apellido, ' ', d.apellido2) LIKE ? OR oe_emp_det.descripcion LIKE ?";
+               queryParams = [searchTermWildcard, searchTermWildcard, searchTermWildcard];
+            }
 
-				const queryStr = `${baseQuery} ${whereClause} ORDER BY InvoiceId DESC LIMIT ? OFFSET ?`;
-				queryParams.push(limit, offset);
+            const queryStr = `${baseQuery} ${whereClause} ORDER BY InvoiceId DESC LIMIT ? OFFSET ?`;
+            queryParams.push(limit, offset);
 
-				const [parcels, [{ total }]] = await Promise.all([
-					mysql_client(queryStr, queryParams),
-					mysql_client("SELECT FOUND_ROWS() as total"),
-				]);
+            const [parcels, [{ total }]] = await Promise.all([
+               mysql_client(queryStr, queryParams),
+               mysql_client("SELECT FOUND_ROWS() as total"),
+            ]);
 
-				return [parcels, total];
-			} catch (error) {
-				console.error(`Error occurred during package search with term "${searchTerm}":`, error);
-				throw new Error("An error occurred while searching for packages. Please try again later.");
-			}
-		},
+            return [parcels, total];
+         } catch (error) {
+            console.error(`Error occurred during package search with term "${searchTerm}":`, error);
+            throw new Error("An error occurred while searching for packages. Please try again later.");
+         }
+      },
 
-		getInHblArray: async (hblArray: string[], verbose = false) => {
-			if (hblArray.length === 0) {
-				return [];
-			}
+      getInHblArray: async (hblArray: string[], verbose = false) => {
+         if (hblArray.length === 0) {
+            return [];
+         }
 
-			const placeholders = hblArray.map(() => "?").join(",");
-			const query = verbose
-				? `select *  FROM parcels WHERE hbl IN (${placeholders})`
-				: `SELECT hbl,containerId,invoiceId,agencyId FROM parcels WHERE hbl IN (${placeholders})`;
+         const placeholders = hblArray.map(() => "?").join(",");
+         const query = verbose
+            ? `select *  FROM parcels WHERE hbl IN (${placeholders})`
+            : `SELECT hbl,containerId,invoiceId,agencyId FROM parcels WHERE hbl IN (${placeholders})`;
 
-			const result = await mysql_client(query, hblArray);
-			return result;
-		},
+         const result = await mysql_client(query, hblArray);
+         return result;
+      },
 
-		getByInvoiceId: async (invoiceId: number) => {
-			const query = "SELECT * FROM parcels WHERE invoiceId = ? ";
-			try {
-				const result = await mysql_client(query, [invoiceId]);
-				const formattedResult = formatSearchResult(result, result);
-				// Check if result is an array and has elements
-				if (Array.isArray(result) && result.length > 0) {
-					return formattedResult;
-				} else {
-					return null;
-				}
-			} catch (error) {
-				console.error("Error fetching parcel by invoice ID:", error);
-				throw error;
-			}
-		},
-		getAllParcelsInInvoiceByHbl: async (hbl: string) => {
-			try {
-				hbl = hbl.replace(/[*#?]/g, "");
-				let result = [];
-				//if hbl is a number, get by invoiceId
-				if (!isNaN(Number(hbl))) {
-					const invoice = await mysql_db.parcels.getByInvoiceId(parseInt(hbl));
-					return invoice;
-				}
-				const query =
-					"select * from parcels where invoiceId in (select invoiceId from parcels where hbl=?)";
-				result = (await mysql_client(query, [hbl])) || [];
+      getByInvoiceId: async (invoiceId: number) => {
+         const query = "SELECT * FROM parcels WHERE invoiceId = ? ";
+         try {
+            const result = await mysql_client(query, [invoiceId]);
+            const formattedResult = formatSearchResult(result, result);
+            // Check if result is an array and has elements
+            if (Array.isArray(result) && result.length > 0) {
+               return formattedResult;
+            } else {
+               return null;
+            }
+         } catch (error) {
+            console.error("Error fetching parcel by invoice ID:", error);
+            throw error;
+         }
+      },
+      getAllParcelsInInvoiceByHbl: async (hbl: string) => {
+         try {
+            hbl = hbl.replace(/[*#?]/g, "");
+            let result = [];
+            //if hbl is a number, get by invoiceId
+            if (!isNaN(Number(hbl))) {
+               const invoice = await mysql_db.parcels.getByInvoiceId(parseInt(hbl));
+               return invoice;
+            }
+            const query = "select * from parcels where invoiceId in (select invoiceId from parcels where hbl=?)";
+            result = (await mysql_client(query, [hbl])) || [];
 
-				return result;
-			} catch (error) {
-				console.error("Error fetching parcels by invoice ID:", error);
-				throw error;
-			}
-		},
+            return result;
+         } catch (error) {
+            console.error("Error fetching parcels by invoice ID:", error);
+            throw error;
+         }
+      },
 
-		getByHbl: async (hbl: string) => {
-			try {
-				const result = await mysql_client(`SELECT * FROM parcels WHERE hbl = ?`, [hbl]);
+      getByHbl: async (hbl: string) => {
+         try {
+            const result = await mysql_client(`SELECT * FROM parcels WHERE hbl = ?`, [hbl]);
 
-				if (!result || result.length === 0) {
-					return [];
-				}
+            if (!result || result.length === 0) {
+               return [];
+            }
 
-				return result;
-			} catch (error) {
-				console.error(`Error fetching parcel by HBL ${hbl}:`, error);
-				throw new Error("Failed to fetch parcel data");
-			}
-		},
-	},
-	stats: {
-		getSalesStats: async () => {
-			const result = await mysql_client(
-				"SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where dispatchId is null and containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;",
-			);
-			const agency = result.map((item: any) => {
-				return {
-					agency: toCamelCase(item.agency),
-					weight: item.weight,
-				};
-			});
-			return agency;
-		},
-		getDailySalesByAgency: async (
-			agencyId: number = 2,
-			startDate: string = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1))
-				.toISOString()
-				.split("T")[0],
-			endDate: string = new Date().toISOString().split("T")[0],
-		) => {
-			const result = await mysql_client(
-				`SELECT 
+            return result;
+         } catch (error) {
+            console.error(`Error fetching parcel by HBL ${hbl}:`, error);
+            throw new Error("Failed to fetch parcel data");
+         }
+      },
+   },
+   stats: {
+      getSalesStats: async () => {
+         const result = await mysql_client(
+            "SELECT agency, sum(weight) as weight FROM u373067935_cte.parcels where dispatchId is null and containerId=0 and invoiceDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND invoiceDate < CURDATE() group by agencyId order by weight desc;"
+         );
+         const agency = result.map((item: any) => {
+            return {
+               agency: toCamelCase(item.agency),
+               weight: item.weight,
+            };
+         });
+         return agency;
+      },
+      getDailySalesByAgency: async (
+         agencyId: number = 2,
+         startDate: string = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1))
+            .toISOString()
+            .split("T")[0],
+         endDate: string = new Date().toISOString().split("T")[0]
+      ) => {
+         const result = await mysql_client(
+            `SELECT 
 					fecha as date,  
 					SUM(total + tarjeta_credito) AS sales 
 				FROM u373067935_cte.orden_envio 
@@ -327,12 +326,12 @@ export const mysql_db = {
 					AND fecha < DATE_FORMAT(DATE_ADD(CURRENT_DATE, INTERVAL 1 MONTH), '%Y-%m-01')
 				GROUP BY fecha 
 				ORDER BY fecha ASC`,
-				[agencyId],
-			);
-			return result;
-		},
+            [agencyId]
+         );
+         return result;
+      },
 
-		/*
+      /*
 		SELECT 
     YEAR(fecha) AS venta_anual,
     SUM(total + tarjeta_credito+cargo+cargo_extra) AS ventas_totales
@@ -344,19 +343,20 @@ GROUP BY
     venta_anual
 ORDER BY 
     venta_anual ASC; */
-		getEmployeeSales: async (agencyId: number = 2) => {
-			const result = await mysql_client(
-				"   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = ? group by usuario ORDER BY sales DESC;",
-				[agencyId],
-			);
-			return result;
-		},
-		getEmployeeSalesByMonth: async (agencyId: number = 2, month: number = new Date().getMonth() + 1) => {
-			const result = await mysql_client(
-				"SELECT sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE MONTH(fecha) = ? AND agencia = ? group by usuario ORDER BY sales DESC;",
-				[month, agencyId],
-			);
-			return result;
-		},
-	},
+      getEmployeeSales: async (agencyId: number = 2) => {
+         const result = await mysql_client(
+            "   SELECT  sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE DATE(fecha) = CURDATE() AND agencia = ? group by usuario ORDER BY sales DESC;",
+            [agencyId]
+         );
+         return result;
+      },
+      getEmployeeSalesByMonth: async (agencyId: number = 2, month: number = new Date().getMonth() + 1, year: number = new Date().getFullYear()) => {
+         console.log(month, agencyId);
+         const result = await mysql_client(
+            `SELECT usuario AS employee,SUM(COALESCE(total,0) + COALESCE(tarjeta_credito,0)) AS sales FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE MONTH(fecha) = ? AND YEAR(fecha) = ? AND agencia = ? GROUP BY usuario HAVING sales > 0 ORDER BY sales DESC`,
+            [month, year, agencyId]
+         );
+         return result;
+      },
+   },
 };
