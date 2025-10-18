@@ -351,5 +351,12 @@ ORDER BY
 			);
 			return result;
 		},
+		getEmployeeSalesByMonth: async (agencyId: number = 2, month: number = new Date().getMonth() + 1) => {
+			const result = await mysql_client(
+				"SELECT sum( total+tarjeta_credito) as sales,usuario as employee FROM orden_envio INNER JOIN agencias ON orden_envio.agencia = agencias.id WHERE MONTH(fecha) = ? AND agencia = ? group by usuario ORDER BY sales DESC;",
+				[month, agencyId],
+			);
+			return result;
+		},
 	},
 };
