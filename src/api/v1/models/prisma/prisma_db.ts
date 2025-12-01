@@ -60,7 +60,7 @@ export const prisma_db = {
       },
    },
    shipments: {
-      getShipments: async ({ limit = 100, offset = 0 }: { limit?: number; offset?: number }) => {
+      getShipments: async ({ limit = 20, offset = 0 }: { limit?: number; offset?: number }) => {
          const [shipments, totalShipments] = await Promise.all([
             prisma.shipment.findMany({
                select: {

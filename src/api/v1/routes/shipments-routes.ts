@@ -6,7 +6,7 @@ import { authMiddleware } from "../middlewares/auth-middleware";
 const shipmentsRoutes = Router();
 
 //get all tracking
-shipmentsRoutes.get("/", authMiddleware, shipmentsController.getShipments);
+shipmentsRoutes.get("/", shipmentsController.getShipments);
 
 // Specific routes MUST come before generic parameter routes
 shipmentsRoutes.get("/search", shipmentsController.searchShipments);

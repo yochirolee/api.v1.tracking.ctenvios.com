@@ -270,20 +270,20 @@ export const shipmentsController = {
       res.json(shipment_with_mysql);
    },
    getByInvoiceId: async (req: Request, res: Response) => {
-	try {
-		const invoiceId = req.params.invoiceId;
-		if (!invoiceId) {
-			return res.status(400).json({ message: "Invoice ID is required" });
-		}
-		const result = await mysql_db.parcels.getByInvoiceId(parseInt(invoiceId));
-		if (!result) {
-			return res.status(400).json({ message: "No shipments found" });
-		}
-		res.json(result);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ message: "Internal server error" });
-	}
+      try {
+         const invoiceId = req.params.invoiceId;
+         if (!invoiceId) {
+            return res.status(400).json({ message: "Invoice ID is required" });
+         }
+         const result = await mysql_db.parcels.getByInvoiceId(parseInt(invoiceId));
+         if (!result) {
+            return res.status(400).json({ message: "No shipments found" });
+         }
+         res.json(result);
+      } catch (error) {
+         console.error(error);
+         res.status(500).json({ message: "Internal server error" });
+      }
    },
 
    getShipmentsInInvoice: async (req: Request, res: Response) => {

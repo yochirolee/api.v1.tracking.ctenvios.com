@@ -16,8 +16,7 @@ export const hm_api = {
       return response.data;
    },
    findManifestByContainerNumber: async (containerNumber: string) => {
-     const allManifests = await axios.get(`${url}/manifiestos`);
-     return allManifests.data;
+      const allManifests = await axios.get(`${url}/manifiestos`);
+      return allManifests.data;
    },
-   
 };
