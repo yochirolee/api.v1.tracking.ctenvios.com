@@ -269,65 +269,23 @@ export const shipmentsController = {
 
       res.json(shipment_with_mysql);
    },
+   getByInvoiceId: async (req: Request, res: Response) => {
+	try {
+		const invoiceId = req.params.invoiceId;
+		if (!invoiceId) {
+			return res.status(400).json({ message: "Invoice ID is required" });
+		}
+		const result = await mysql_db.parcels.getByInvoiceId(parseInt(invoiceId));
+		if (!result) {
+			return res.status(400).json({ message: "No shipments found" });
+		}
+		res.json(result);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+   },
 
-   /*  getShipmentByHbl: async (req: Request, res: Response) => {
-      const hbl = req.params.hbl;
-      if (!hbl) {
-         return res.status(400).json({ message: "HBL is required" });
-      }
-      const [shipment, search_on_mysql, hm_history] = await Promise.all([
-         prisma_db.shipments.getShipmentByHbl(hbl),
-         mysql_db.parcels.getInHblArray([hbl], true),
-         hm_api.getShipmentHistory(hbl).catch((error) => {
-            console.error(`Failed to fetch shipment history for ${hbl}:`, error.message);
-            return [];
-         }),
-      ]);
-
-      //merge issues and events
-
-      const mslq_parcel = search_on_mysql[0];
-      const mysql_events = generateMySqlEvents(mslq_parcel);
-      const shippingAddress = toCamelCase(
-         [
-            toCamelCase(mslq_parcel.cll),
-            mslq_parcel.entre_cll ? "entre " + toCamelCase(mslq_parcel.entre_cll) : "",
-            mslq_parcel.no ? "No. " + toCamelCase(mslq_parcel.no) : "",
-            mslq_parcel.apto ? "Apto. " + toCamelCase(mslq_parcel.apto) : "",
-            mslq_parcel.reparto ? "Reparto. " + toCamelCase(mslq_parcel.reparto) : "",
-         ]
-            .filter(Boolean)
-            .join(" ")
-      );
-
-      const shipment_with_mysql = {
-         hbl: mslq_parcel.hbl,
-         invoiceId: mslq_parcel.invoiceId,
-         weight: mslq_parcel.weight,
-         agency: {
-            id: mslq_parcel.agencyId,
-            name: mslq_parcel.agency,
-         },
-         invoiceDate: mslq_parcel.invoiceDate,
-         description: toCamelCase(mslq_parcel.description),
-         sender: {
-            name: toCamelCase(mslq_parcel.sender),
-            mobile: mslq_parcel.senderMobile,
-         },
-         receiver: {
-            name: toCamelCase(mslq_parcel.receiver),
-            mobile: mslq_parcel.receiverMobile,
-            address: shippingAddress,
-            ci: mslq_parcel.receiverCi,
-            state: mslq_parcel.province,
-            city: mslq_parcel.city,
-         },
-         events: [...mysql_events, ...(shipment?.events || [])],
-      };
-      console.log(shipment_with_mysql, "shipment_with_mysql");
-      console.log(hm_history.historial, "hm_history");
-      res.json(shipment_with_mysql);
-   }, */
    getShipmentsInInvoice: async (req: Request, res: Response) => {
       try {
          const hbl = req.params.hbl;

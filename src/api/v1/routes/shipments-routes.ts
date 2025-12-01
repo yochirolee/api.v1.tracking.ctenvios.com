@@ -7,13 +7,16 @@ const shipmentsRoutes = Router();
 
 //get all tracking
 shipmentsRoutes.get("/", authMiddleware, shipmentsController.getShipments);
-//get tracking by hbl
-shipmentsRoutes.get("/search", authMiddleware, shipmentsController.searchShipments);
 
-shipmentsRoutes.get("/hbl/:hbl", shipmentsController.getShipmentByHbl);
+// Specific routes MUST come before generic parameter routes
+shipmentsRoutes.get("/search", shipmentsController.searchShipments);
+shipmentsRoutes.get("/invoice/:invoiceId", shipmentsController.getByInvoiceId);
 shipmentsRoutes.get("/delivery/:hbl", shipmentsController.getShipmentsInInvoice);
 shipmentsRoutes.post("/delivery", authMiddleware, shipmentsController.deliveryShipments);
 shipmentsRoutes.get("/user", authMiddleware, shipmentsController.getShipmentsByUserId);
+
+//get tracking by hbl (keep this AFTER specific routes)
+shipmentsRoutes.get("/hbl/:hbl", shipmentsController.getShipmentByHbl);
 
 //upsert shipments
 shipmentsRoutes.get("/scanned/:statusId", authMiddleware, shipmentsController.scannedShipments);
