@@ -10,8 +10,8 @@ shipmentsRoutes.get("/", authMiddleware, shipmentsController.getShipments);
 //get tracking by hbl
 shipmentsRoutes.get("/search", authMiddleware, shipmentsController.searchShipments);
 
-shipmentsRoutes.get("/hbl/:hbl", authMiddleware, shipmentsController.getShipmentByHbl);
-shipmentsRoutes.get("/delivery/:hbl", authMiddleware, shipmentsController.getShipmentsInInvoice);
+shipmentsRoutes.get("/hbl/:hbl", shipmentsController.getShipmentByHbl);
+shipmentsRoutes.get("/delivery/:hbl", shipmentsController.getShipmentsInInvoice);
 shipmentsRoutes.post("/delivery", authMiddleware, shipmentsController.deliveryShipments);
 shipmentsRoutes.get("/user", authMiddleware, shipmentsController.getShipmentsByUserId);
 

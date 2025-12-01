@@ -68,6 +68,7 @@ export const user_controller = {
 	login: async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const { email, password } = login_schema.parse(req.body);
+			console.log(email, password);
 			const user = await prisma_db.users.getUserByEmail(email);
 			if (!user) {
 				return res.status(404).json({ error: "User not found" });
