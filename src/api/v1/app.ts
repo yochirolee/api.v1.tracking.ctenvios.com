@@ -9,6 +9,8 @@ import rateLimit from "express-rate-limit";
 
 const app: Application = express();
 
+// Trust proxy for rate limiting (AWS Lambda/API Gateway/Vercel)
+app.set("trust proxy", 1);
 
 // CORS Configuration - Allow all ctenvios.com subdomains
 const isAllowedOrigin = (origin: string): boolean => {
