@@ -12,33 +12,25 @@ const app: Application = express();
 // Trust proxy for rate limiting (AWS Lambda/API Gateway/Vercel)
 app.set("trust proxy", 1);
 
-// CORS Configuration - Allow all ctenvios.com subdomains
-const isAllowedOrigin = (origin: string): boolean => {
-   // Allow localhost for development
-   if (origin.includes("localhost")) return true;
-
-   // Allow all ctenvios.com subdomains (http and https)
-   const ctenviosDomainPattern = /^https?:\/\/([a-z0-9-]+\.)?ctenvios\.com$/i;
-   return ctenviosDomainPattern.test(origin);
+// CORS configuration
+const corsOptions = {
+   origin: [
+      "https://ctenvios.com",
+      "https://dashboard.ctenvios.com",
+      "https://www.ctenvios.com",
+      "http://localhost:3000", // for development
+   ],
+   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+   allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "api-key", // Add this!
+   ],
+   credentials: true,
+   optionsSuccessStatus: 200,
 };
 
-app.use(
-   cors({
-      origin: (origin, callback) => {
-         // Allow requests with no origin (like mobile apps or curl requests)
-         if (!origin) return callback(null, true);
-
-         if (isAllowedOrigin(origin)) {
-            callback(null, true);
-         } else {
-            callback(new Error("Not allowed by CORS"));
-         }
-      },
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-   })
-);
+app.use(cors(corsOptions));
 
 app.use(helmet());
 app.use(morgan("dev"));
