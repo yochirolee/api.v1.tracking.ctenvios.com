@@ -9,8 +9,9 @@ import rateLimit from "express-rate-limit";
 
 const app: Application = express();
 
-// Trust proxy - required when behind AWS Lambda, API Gateway, or reverse proxy
-app.set("trust proxy", true);
+// Trust proxy - AWS Lambda/API Gateway is a single proxy layer
+// Using 1 instead of true prevents IP spoofing attacks
+app.set("trust proxy", 1);
 
 // Middleware
 app.use(cors());
