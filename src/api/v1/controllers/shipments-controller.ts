@@ -171,7 +171,7 @@ export const shipmentsController = {
          //implementation missing
          //const user = req.user;
          const shipments = await prisma_db.shipments.getShipments({
-            limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
+            limit: req.query.limit ? parseInt(req.query.limit as string) : 25,
             offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
          });
 
