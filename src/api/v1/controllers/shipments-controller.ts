@@ -207,13 +207,23 @@ export const shipmentsController = {
          return res.status(400).json({ message: "HBL is required" });
       }
 
+      // Timeout wrapper - prevents blocking beyond specified time
+      const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+         const timeout = new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms));
+         return Promise.race([promise, timeout]);
+      };
+
       const [shipment, search_on_mysql, hm_history] = await Promise.all([
          prisma_db.shipments.getShipmentByHbl(hbl),
          mysql_db.parcels.getInHblArray([hbl], true),
-         hm_api.getShipmentHistory(hbl).catch((error) => {
-            console.error(`Failed to fetch shipment history for ${hbl}:`, error.message);
-            return [];
-         }),
+         withTimeout(
+            hm_api.getShipmentHistory(hbl).catch((error) => {
+               console.error(`Failed to fetch shipment history for ${hbl}:`, error.message);
+               return [];
+            }),
+            3000, // Max 3 seconds - then continue without blocking
+            []
+         ),
       ]);
 
       const mslq_parcel = search_on_mysql[0];
